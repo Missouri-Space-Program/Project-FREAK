@@ -36,5 +36,18 @@ public sealed class DemoMotorSimulator
         return new DemoMotorReading(thrust, pressure);
     }
 
+    public void SampleBatch(
+        double startSeconds,
+        double scanIntervalSeconds,
+        Span<DemoMotorReading> destination,
+        double thrustFullScaleNewtons = 5000,
+        double pressureFullScalePsi = 1600)
+    {
+        for (int i = 0; i < destination.Length; i++)
+        {
+            destination[i] = Sample(startSeconds + i * scanIntervalSeconds, thrustFullScaleNewtons, pressureFullScalePsi);
+        }
+    }
+
     private double Noise(double maximumMagnitude) => (_random.NextDouble() * 2 - 1) * maximumMagnitude;
 }

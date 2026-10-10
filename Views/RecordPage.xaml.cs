@@ -74,6 +74,7 @@ namespace Project_FREAK.Views
             // Subscribe to events
             Unloaded += RecordPage_Unloaded;
             _labjackManager.DataUpdated += UpdateGraphs;
+            _labjackManager.BatchDataUpdated += OnBatchDataUpdated;
             _countdownService.CountdownUpdated += UpdateCountdownDisplay;
             _countdownService.CountdownFinished += HandleCountdownCompletion;
 
@@ -113,7 +114,7 @@ namespace Project_FREAK.Views
         // Updates the graphs with new data points
         private void UpdateGraphs(double thrustVoltage, double thrust, double pressureVoltage, double pressure)
         {
-            if (_isSaving) return; // Skip if data is being saved
+            if (_isSaving || _labjackManager.IsStreaming) return; // Skip if saving or if handled by streaming batches
 
             var elapsedTime = _stopwatch.Elapsed.TotalSeconds; // Get elapsed time
 
@@ -127,6 +128,38 @@ namespace Project_FREAK.Views
             _dataQueue.Enqueue((elapsedTime, thrust, pressure, thrustVoltage, pressureVoltage));
 
             // Only update graphs at specified frame rate using non-blocking dispatch and batching
+            if (_graphUpdateStopwatch.ElapsedMilliseconds >= 1000 / graphFPS)
+            {
+                _graphUpdateStopwatch.Restart();
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                {
+                    var points = new List<(double time, double thrust, double pressure)>();
+                    while (_dataQueue.TryDequeue(out var dataPoint))
+                    {
+                        points.Add((dataPoint.time, dataPoint.thrust, dataPoint.pressure));
+                    }
+                    if (points.Count > 0)
+                    {
+                        _graphManager.AddDataPoints(points);
+                    }
+                }));
+            }
+        }
+
+        private void OnBatchDataUpdated(DataPointRecord[] batch)
+        {
+            if (_isSaving || batch.Length == 0) return;
+
+            if (_isRecording)
+            {
+                _dataRecorder.AddDataPoints(batch);
+            }
+
+            for (int i = 0; i < batch.Length; i++)
+            {
+                _dataQueue.Enqueue((batch[i].Time, batch[i].Thrust, batch[i].Pressure, batch[i].ThrustVoltage, batch[i].PressureVoltage));
+            }
+
             if (_graphUpdateStopwatch.ElapsedMilliseconds >= 1000 / graphFPS)
             {
                 _graphUpdateStopwatch.Restart();
@@ -237,6 +270,7 @@ namespace Project_FREAK.Views
             }
 
             _isRecording = false;
+            _labjackManager.StopStreaming();
 
             if (_isVideoRecording)
             {
@@ -311,12 +345,14 @@ namespace Project_FREAK.Views
             _dataRecorder.Dispose();
             _stopwatch.Reset();
             _webcamManager.Dispose();
+            _labjackManager.StopStreaming();
             _labjackManager.Dispose();
             _countdownService.Dispose();
 
             // Unsubscribe events
             ((App)Application.Current).SettingsManager.AppliedSettingsChanged -= SettingsChangedHandler;
             _labjackManager.DataUpdated -= UpdateGraphs;
+            _labjackManager.BatchDataUpdated -= OnBatchDataUpdated;
         }
 
         // Handles settings changes
@@ -368,6 +404,8 @@ namespace Project_FREAK.Views
 
                 _dataRecorder.StartRecording(_currentSessionFolder);
                 _isRecording = true;
+                var appliedSettings = ((App)Application.Current).SettingsManager.AppliedSettings;
+                _labjackManager.StartStreaming(appliedSettings.SamplingRateHz);
                 StartTestTextBlock.Text = "Stop Recording";
                 StartButton.Background = Brushes.Red;
 
@@ -387,6 +425,7 @@ namespace Project_FREAK.Views
             catch (Exception ex)
             {
                 _isRecording = false;
+                _labjackManager.StopStreaming();
                 _dataRecorder.StopRecording();
                 MessageBox.Show($"Error starting sensor data recording: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);

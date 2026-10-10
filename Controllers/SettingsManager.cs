@@ -124,6 +124,8 @@ public class SettingsManager : INotifyPropertyChanged
         public string PressureInputChannel { get; set; } = "AIN0"; // LabJack analog input carrying the pressure sensor signal.
         public string LoadCellInputChannel { get; set; } = "AIN5"; // LabJack analog input carrying the conditioned load-cell signal.
         public string IgniterOutputChannel { get; set; } = "DAC0"; // LabJack analog output connected to the igniter control circuit.
+        public int SamplingRateHz { get; set; } = 1000; // Sensor sampling rate in Hz (e.g. 100, 250, 500, 1000, 2000).
+        public int LiveGraphWindowSeconds { get; set; } = 15; // Relative time window duration in seconds for live graphs (e.g. 5, 10, 15, 30, 60).
 
         public SettingsData Clone() => (SettingsData)MemberwiseClone();
 
@@ -142,6 +144,10 @@ public class SettingsManager : INotifyPropertyChanged
                 LoadCellFullScaleValue = 500;
             if (LoadCellFullScaleUnit is not ("kg" or "N"))
                 LoadCellFullScaleUnit = "kg";
+            if (SamplingRateHz is < 10 or > 10000)
+                SamplingRateHz = 1000;
+            if (LiveGraphWindowSeconds is < 2 or > 300)
+                LiveGraphWindowSeconds = 15;
 
             return this;
         }

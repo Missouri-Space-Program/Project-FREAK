@@ -33,6 +33,8 @@ namespace Project_FREAK.Tests
             Assert.Equal("DAC0", mgr.AppliedSettings.IgniterOutputChannel);
             Assert.Equal(500, mgr.AppliedSettings.LoadCellFullScaleValue);
             Assert.Equal("kg", mgr.AppliedSettings.LoadCellFullScaleUnit);
+            Assert.Equal(1000, mgr.AppliedSettings.SamplingRateHz);
+            Assert.Equal(15, mgr.AppliedSettings.LiveGraphWindowSeconds);
             Assert.Equal(500 * 9.80665, mgr.AppliedSettings.GetLoadCellFullScaleNewtons());
         }
 
@@ -69,12 +71,16 @@ namespace Project_FREAK.Tests
             {
                 PressureInputChannel = "AIN99",
                 LoadCellInputChannel = "not-an-input",
-                IgniterOutputChannel = "AIN3"
+                IgniterOutputChannel = "AIN3",
+                SamplingRateHz = -50,
+                LiveGraphWindowSeconds = 999
             });
 
             Assert.Equal("AIN0", mgr.AppliedSettings.PressureInputChannel);
             Assert.Equal("AIN5", mgr.AppliedSettings.LoadCellInputChannel);
             Assert.Equal("DAC0", mgr.AppliedSettings.IgniterOutputChannel);
+            Assert.Equal(1000, mgr.AppliedSettings.SamplingRateHz);
+            Assert.Equal(15, mgr.AppliedSettings.LiveGraphWindowSeconds);
         }
 
         [Fact]

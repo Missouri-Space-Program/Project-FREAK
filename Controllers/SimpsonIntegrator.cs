@@ -39,9 +39,6 @@ public static class SimpsonIntegrator
             return 0;
 
         var spline = CubicSpline.InterpolateNaturalSorted(uniqueTime.ToArray(), uniqueValues.ToArray());
-        double total = 0;
-        for (int index = 0; index < uniqueTime.Count - 1; index++)
-            total += SimpsonRule.IntegrateComposite(spline.Interpolate, uniqueTime[index], uniqueTime[index + 1], 2);
-        return total;
+        return spline.Integrate(uniqueTime[0], uniqueTime[^1]);
     }
 }

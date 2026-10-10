@@ -108,7 +108,9 @@ public partial class ReviewDataPage : Page
             return;
 
         ThrustPlot.Plot.Clear();
-        ThrustPlot.Plot.Add.Scatter(_dataset.TimeSeconds, _dataset.ThrustNewtons);
+        var thrustScatter = ThrustPlot.Plot.Add.Scatter(_dataset.TimeSeconds, _dataset.ThrustNewtons);
+        if (_dataset.TimeSeconds.Length > 2000)
+            thrustScatter.MarkerSize = 0;
         ThrustPlot.Plot.Title("Thrust over time");
         ThrustPlot.Plot.Axes.Bottom.Label.Text = "Time (s)";
         ThrustPlot.Plot.Axes.Left.Label.Text = "Thrust (N)";
@@ -125,7 +127,9 @@ public partial class ReviewDataPage : Page
         ThrustPlot.Refresh();
 
         PressurePlot.Plot.Clear();
-        PressurePlot.Plot.Add.Scatter(_dataset.TimeSeconds, _dataset.PressurePsi);
+        var pressureScatter = PressurePlot.Plot.Add.Scatter(_dataset.TimeSeconds, _dataset.PressurePsi);
+        if (_dataset.TimeSeconds.Length > 2000)
+            pressureScatter.MarkerSize = 0;
         PressurePlot.Plot.Title("Pressure over time");
         PressurePlot.Plot.Axes.Bottom.Label.Text = "Time (s)";
         PressurePlot.Plot.Axes.Left.Label.Text = "Pressure (PSI)";
@@ -237,30 +241,53 @@ public partial class ReviewDataPage : Page
 
         double start = _intervalStartSeconds;
         double end = _intervalEndSeconds;
-        var selected = Enumerable.Range(0, time.Length).Where(index => time[index] >= start && time[index] <= end).ToArray();
-        if (selected.Length == 0)
+
+        int startIndex = Array.BinarySearch(time, start);
+        if (startIndex < 0) startIndex = ~startIndex;
+        int endIndex = Array.BinarySearch(time, end);
+        if (endIndex < 0) endIndex = Math.Max(startIndex, ~endIndex - 1);
+        if (startIndex >= time.Length || endIndex < startIndex)
         {
             IntervalStatsText.Text = "Selected interval\nNo samples in this interval.";
             return;
         }
 
-        double[] selectedTime = selected.Select(index => time[index]).ToArray();
-        double[] selectedThrust = selected.Select(index => thrust[index]).ToArray();
-        double[] selectedPressure = selected.Select(index => pressure[index]).ToArray();
+        int count = endIndex - startIndex + 1;
+        var selectedTime = new ArraySegment<double>(time, startIndex, count);
+        var selectedThrust = new ArraySegment<double>(thrust, startIndex, count);
+        var selectedPressure = new ArraySegment<double>(pressure, startIndex, count);
         IntervalStatsText.Text = FormatStatistics("Selected interval", selectedTime, selectedThrust, selectedPressure);
     }
 
-    private static string FormatStatistics(string heading, double[] time, double[] thrust, double[] pressure)
+    private static string FormatStatistics(string heading, IReadOnlyList<double> time, IReadOnlyList<double> thrust, IReadOnlyList<double> pressure)
     {
-        double duration = time.Length > 1 ? time[^1] - time[0] : 0;
-        double averageThrust = thrust.Average();
-        double maximumThrust = thrust.Max();
-        double averagePressure = pressure.Average();
-        double maximumPressure = pressure.Max();
+        double duration = time.Count > 1 ? time[^1] - time[0] : 0;
+        double thrustSum = 0;
+        double thrustMax = double.NegativeInfinity;
+        for (int i = 0; i < thrust.Count; i++)
+        {
+            double v = thrust[i];
+            thrustSum += v;
+            if (v > thrustMax) thrustMax = v;
+        }
+        double averageThrust = thrust.Count > 0 ? thrustSum / thrust.Count : 0;
+        double maximumThrust = thrust.Count > 0 ? thrustMax : 0;
+
+        double pressureSum = 0;
+        double pressureMax = double.NegativeInfinity;
+        for (int i = 0; i < pressure.Count; i++)
+        {
+            double v = pressure[i];
+            pressureSum += v;
+            if (v > pressureMax) pressureMax = v;
+        }
+        double averagePressure = pressure.Count > 0 ? pressureSum / pressure.Count : 0;
+        double maximumPressure = pressure.Count > 0 ? pressureMax : 0;
+
         double totalImpulse = SimpsonIntegrator.Integrate(time, thrust);
         string motorDesignation = MotorDesignation.Format(totalImpulse, averageThrust);
 
-        return $"{heading}\nSamples: {time.Length}    Duration: {duration:F2} s\n" +
+        return $"{heading}\nSamples: {time.Count}    Duration: {duration:F2} s\n" +
                $"Average thrust: {averageThrust:F2} N    Peak thrust: {maximumThrust:F2} N\n" +
                $"Average pressure: {averagePressure:F2} PSI    Peak pressure: {maximumPressure:F2} PSI\n" +
                $"Total impulse: {totalImpulse:F2} N·s\n" +

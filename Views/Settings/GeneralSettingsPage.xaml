@@ -81,6 +81,8 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="Pressure sensor input (AIN):" VerticalAlignment="Center" Margin="0,5"/>
                             <ComboBox x:Name="PressureInputChannelComboBox" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
@@ -88,6 +90,10 @@
                             <ComboBox x:Name="LoadCellInputChannelComboBox" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
                             <TextBlock Grid.Row="2" Text="Igniter output (DAC):" VerticalAlignment="Center" Margin="0,5"/>
                             <ComboBox x:Name="IgniterOutputChannelComboBox" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+                            <TextBlock Grid.Row="3" Text="Sampling rate:" VerticalAlignment="Center" Margin="0,5"/>
+                            <ComboBox x:Name="SamplingRateComboBox" Grid.Row="3" Grid.Column="1" Margin="0,4"/>
+                            <TextBlock Grid.Row="4" Text="Live graph window:" VerticalAlignment="Center" Margin="0,5"/>
+                            <ComboBox x:Name="LiveGraphWindowComboBox" Grid.Row="4" Grid.Column="1" Margin="0,4"/>
                         </Grid>
                     </StackPanel>
                 </GroupBox>

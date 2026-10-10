@@ -41,10 +41,18 @@ public partial class GeneralSettingsPage : Page
         PressureInputChannelComboBox.ItemsSource = inputChannels;
         LoadCellInputChannelComboBox.ItemsSource = inputChannels;
         IgniterOutputChannelComboBox.ItemsSource = new[] { "DAC0", "DAC1" };
+        SamplingRateComboBox.ItemsSource = new[] { "100 Hz", "250 Hz", "500 Hz", "1000 Hz", "2000 Hz" };
+        LiveGraphWindowComboBox.ItemsSource = new[] { "5 seconds", "10 seconds", "15 seconds", "30 seconds", "60 seconds" };
         LoadCellFullScaleUnitComboBox.ItemsSource = new[] { "kg", "N" };
         PressureInputChannelComboBox.SelectedItem = _pendingSettings.PressureInputChannel;
         LoadCellInputChannelComboBox.SelectedItem = _pendingSettings.LoadCellInputChannel;
         IgniterOutputChannelComboBox.SelectedItem = _pendingSettings.IgniterOutputChannel;
+        SamplingRateComboBox.SelectedItem = $"{_pendingSettings.SamplingRateHz} Hz";
+        if (SamplingRateComboBox.SelectedIndex < 0)
+            SamplingRateComboBox.SelectedItem = "1000 Hz";
+        LiveGraphWindowComboBox.SelectedItem = $"{_pendingSettings.LiveGraphWindowSeconds} seconds";
+        if (LiveGraphWindowComboBox.SelectedIndex < 0)
+            LiveGraphWindowComboBox.SelectedItem = "15 seconds";
         LoadCellFullScaleValueTextBox.Text = _pendingSettings.LoadCellFullScaleValue.ToString("G", CultureInfo.CurrentCulture);
         LoadCellFullScaleUnitComboBox.SelectedItem = _pendingSettings.LoadCellFullScaleUnit;
         UseRawDataForReviewCheckBox.DataContext = _pendingSettings;
@@ -465,6 +473,24 @@ public partial class GeneralSettingsPage : Page
         _pendingSettings.PressureInputChannel = pressureChannel;
         _pendingSettings.LoadCellInputChannel = loadCellChannel;
         _pendingSettings.IgniterOutputChannel = igniterChannel;
+        string? samplingRateText = SamplingRateComboBox.SelectedItem as string;
+        if (samplingRateText != null && int.TryParse(samplingRateText.Replace(" Hz", "", StringComparison.OrdinalIgnoreCase), out int rateHz) && rateHz >= 10 && rateHz <= 10000)
+        {
+            _pendingSettings.SamplingRateHz = rateHz;
+        }
+        else
+        {
+            _pendingSettings.SamplingRateHz = 1000;
+        }
+        string? windowText = LiveGraphWindowComboBox.SelectedItem as string;
+        if (windowText != null && int.TryParse(windowText.Replace(" seconds", "", StringComparison.OrdinalIgnoreCase), out int windowSec) && windowSec >= 2 && windowSec <= 300)
+        {
+            _pendingSettings.LiveGraphWindowSeconds = windowSec;
+        }
+        else
+        {
+            _pendingSettings.LiveGraphWindowSeconds = 15;
+        }
         _pendingSettings.UseRawDataForReview = UseRawDataForReviewCheckBox.IsChecked == true;
         return true;
     }

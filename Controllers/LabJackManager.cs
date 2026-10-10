@@ -12,10 +12,15 @@ namespace Project_FREAK.Controllers
         private bool _isIgniterArmed = false; // Indicates if the igniter is armed
         private static LabJackManager _instance = null!; // Singleton instance
         private volatile bool _isReading; // Indicates if data is being read from the device
+        private volatile bool _isStreaming; // Indicates if hardware or demo streaming is active
+        private Task? _streamingTask;
+        private CancellationTokenSource? _streamingCts;
         private readonly object _deviceLock = new();
         public event Action<double, double, double, double> DataUpdated = delegate { }; // Event triggered when data is updated
+        public event Action<DataPointRecord[]> BatchDataUpdated = delegate { }; // Event triggered when a streaming batch is available
         public event Action<double, double> LoadCellCalibrationSampleUpdated = delegate { };
         public event EventHandler? ConnectionStatusChanged;
+        public bool IsStreaming => _isStreaming;
         private SettingsManager.SettingsData _calibrationSettings = new();
         private string _activeIgniterChannel = "DAC0";
         private readonly DemoMotorSimulator _demoSimulator = new();
@@ -111,6 +116,7 @@ namespace Project_FREAK.Controllers
         {
             lock (_deviceLock)
             {
+                StopStreamingInternal();
                 if (_handle > 0)
                 {
                     try { LJM.Close(_handle); }
@@ -160,6 +166,280 @@ namespace Project_FREAK.Controllers
             }
             _returnTimer?.Dispose();
             _returnTimer = null;
+        }
+
+        public void StartStreaming(int? targetScanRateHz = null)
+        {
+            lock (_deviceLock)
+            {
+                if (_isStreaming) return;
+
+                // Stop idle reading
+                _isReading = false;
+
+                var settings = Volatile.Read(ref _calibrationSettings);
+                int rateHz = targetScanRateHz ?? settings.SamplingRateHz;
+                if (rateHz < 10) rateHz = 1000;
+
+                _isStreaming = true;
+                _streamingCts = new CancellationTokenSource();
+                var token = _streamingCts.Token;
+
+                if (_isDemo || _handle <= 0)
+                {
+                    _streamingTask = Task.Run(() => RunDemoStreamingLoop(rateHz, token), token);
+                }
+                else
+                {
+                    _streamingTask = Task.Run(() => RunHardwareStreamingLoop(rateHz, token), token);
+                }
+            }
+        }
+
+        public void StopStreaming()
+        {
+            StopStreamingInternal();
+
+            lock (_deviceLock)
+            {
+                // Resume idle polling if not disposed
+                if (_instance != null && (_handle > 0 || _isDemo))
+                {
+                    StartReading();
+                }
+            }
+        }
+
+        private void StopStreamingInternal()
+        {
+            Task? taskToWait = null;
+            lock (_deviceLock)
+            {
+                if (!_isStreaming) return;
+                _isStreaming = false;
+                _streamingCts?.Cancel();
+                taskToWait = _streamingTask;
+            }
+
+            try
+            {
+                taskToWait?.Wait(500);
+            }
+            catch { }
+
+            lock (_deviceLock)
+            {
+                _streamingCts?.Dispose();
+                _streamingCts = null;
+                _streamingTask = null;
+            }
+        }
+
+        private void RunHardwareStreamingLoop(int rateHz, CancellationToken token)
+        {
+            int handle;
+            SettingsManager.SettingsData settings;
+            lock (_deviceLock)
+            {
+                handle = _handle;
+                settings = Volatile.Read(ref _calibrationSettings);
+            }
+
+            if (handle <= 0)
+            {
+                RunDemoStreamingLoop(rateHz, token);
+                return;
+            }
+
+            int[] aScanList = new int[3];
+            int dummyType = 0;
+            int err1 = (int)LJM.NameToAddress(settings.LoadCellInputChannel, ref aScanList[0], ref dummyType);
+            int err2 = (int)LJM.NameToAddress(settings.PressureInputChannel, ref aScanList[1], ref dummyType);
+            int err3 = (int)LJM.NameToAddress("AIN6", ref aScanList[2], ref dummyType);
+            if (err1 != 0 || err2 != 0 || err3 != 0)
+            {
+                aScanList[0] = ParseAinAddress(settings.LoadCellInputChannel, 10);
+                aScanList[1] = ParseAinAddress(settings.PressureInputChannel, 0);
+                aScanList[2] = 12; // AIN6
+            }
+
+            double scanRate = rateHz;
+            int scansPerRead = Math.Clamp(rateHz / 20, 10, 200);
+            int startErr = (int)LJM.eStreamStart(handle, scansPerRead, 3, aScanList, ref scanRate);
+            if (startErr != 0)
+            {
+                Console.WriteLine($"Failed to start LabJack hardware stream: {startErr}. Falling back to demo generator.");
+                RunDemoStreamingLoop(rateHz, token);
+                return;
+            }
+
+            double actualScanRate = scanRate > 0 ? scanRate : rateHz;
+            double[] aData = new double[scansPerRead * 3];
+            int deviceScanBacklog = 0;
+            int ljmScanBacklog = 0;
+            long scanIndex = 0;
+
+            try
+            {
+                while (_isStreaming && !token.IsCancellationRequested)
+                {
+                    int readErr = (int)LJM.eStreamRead(handle, aData, ref deviceScanBacklog, ref ljmScanBacklog);
+                    if (readErr != 0)
+                    {
+                        if (_isStreaming)
+                            Console.WriteLine($"LabJack eStreamRead error: {readErr}");
+                        break;
+                    }
+
+                    var currentSettings = Volatile.Read(ref _calibrationSettings);
+                    var batch = new DataPointRecord[scansPerRead];
+                    double lastVexc = 2.5;
+
+                    for (int i = 0; i < scansPerRead; i++)
+                    {
+                        double thrustVoltage = aData[i * 3 + 0];
+                        double pressureVoltage = aData[i * 3 + 1];
+                        double Vexc = aData[i * 3 + 2];
+                        lastVexc = Vexc;
+
+                        double time = scanIndex / actualScanRate;
+                        scanIndex++;
+
+                        ComputeScaledSensors(currentSettings, thrustVoltage, pressureVoltage, Vexc,
+                            out double calibratedLoad, out double pressure);
+
+                        batch[i] = new DataPointRecord(time, calibratedLoad, pressure, thrustVoltage, pressureVoltage);
+                    }
+
+                    var last = batch[^1];
+                    LoadCellCalibrationSampleUpdated?.Invoke((last.ThrustVoltage - 1.25) / 201, lastVexc);
+                    DataUpdated?.Invoke(last.ThrustVoltage, last.Thrust, last.PressureVoltage, last.Pressure);
+                    BatchDataUpdated?.Invoke(batch);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in hardware streaming loop: {ex.Message}");
+            }
+            finally
+            {
+                try { LJM.eStreamStop(handle); } catch { }
+            }
+        }
+
+        private void RunDemoStreamingLoop(int rateHz, CancellationToken token)
+        {
+            double scanRate = rateHz;
+            int scansPerRead = Math.Clamp(rateHz / 20, 10, 200);
+            double scanIntervalSeconds = 1.0 / scanRate;
+            var stopwatch = Stopwatch.StartNew();
+            long scanIndex = 0;
+
+            try
+            {
+                while (_isStreaming && !token.IsCancellationRequested)
+                {
+                    var settings = Volatile.Read(ref _calibrationSettings);
+                    var batch = new DataPointRecord[scansPerRead];
+                    double demoStartTs = Interlocked.Read(ref _demoProfileStartTimestamp);
+                    double lastVexc = 2.5;
+
+                    for (int i = 0; i < scansPerRead; i++)
+                    {
+                        double time = scanIndex * scanIntervalSeconds;
+                        scanIndex++;
+
+                        double profileElapsed = (Stopwatch.GetTimestamp() - demoStartTs) / (double)Stopwatch.Frequency + (i * scanIntervalSeconds);
+                        var reading = _demoSimulator.Sample(
+                            profileElapsed,
+                            settings.GetLoadCellFullScaleNewtons(),
+                            settings.PressureFullScaleValue);
+
+                        double loadKg = reading.ThrustNewtons / 9.80665;
+                        bool useCalibratedDemoSignal = settings.LoadCellCalibrationEnabled &&
+                            double.IsFinite(settings.LoadCellCalibrationSlope) &&
+                            Math.Abs(settings.LoadCellCalibrationSlope) > 1e-12 &&
+                            double.IsFinite(settings.LoadCellCalibrationOffset) &&
+                            double.IsFinite(settings.LoadCellCalibrationExcitationVoltage) &&
+                            settings.LoadCellCalibrationExcitationVoltage > 0;
+                        double Vexc = useCalibratedDemoSignal ? settings.LoadCellCalibrationExcitationVoltage : 2.5;
+                        lastVexc = Vexc;
+                        double bridgeVoltage = useCalibratedDemoSignal
+                            ? (loadKg - settings.LoadCellCalibrationOffset) / settings.LoadCellCalibrationSlope
+                            : (loadKg + 3.8069375) / 100387.5;
+                        double thrustVoltage = 1.25 + bridgeVoltage * 201;
+                        double pressureVoltage = settings.PressureZeroVoltage +
+                            reading.PressurePsi / settings.PressureFullScaleValue *
+                            (settings.PressureFullScaleVoltage - settings.PressureZeroVoltage);
+
+                        ComputeScaledSensors(settings, thrustVoltage, pressureVoltage, Vexc,
+                            out double calibratedLoad, out double pressure);
+
+                        batch[i] = new DataPointRecord(time, calibratedLoad, pressure, thrustVoltage, pressureVoltage);
+                    }
+
+                    var last = batch[^1];
+                    LoadCellCalibrationSampleUpdated?.Invoke((last.ThrustVoltage - 1.25) / 201, lastVexc);
+                    DataUpdated?.Invoke(last.ThrustVoltage, last.Thrust, last.PressureVoltage, last.Pressure);
+                    BatchDataUpdated?.Invoke(batch);
+
+                    double targetMs = (scanIndex / scanRate) * 1000.0;
+                    double currentMs = stopwatch.Elapsed.TotalMilliseconds;
+                    int delayMs = (int)(targetMs - currentMs);
+                    if (delayMs > 1)
+                    {
+                        Thread.Sleep(delayMs);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in demo streaming loop: {ex.Message}");
+            }
+        }
+
+        private static void ComputeScaledSensors(
+            SettingsManager.SettingsData settings,
+            double thrustVoltage,
+            double pressureVoltage,
+            double Vexc,
+            out double calibratedLoad,
+            out double pressure)
+        {
+            double loadAdjVoltage = (thrustVoltage - 1.25) / 201;
+            double calibratedLoadKg;
+            if (settings.LoadCellCalibrationEnabled &&
+                double.IsFinite(settings.LoadCellCalibrationSlope) &&
+                double.IsFinite(settings.LoadCellCalibrationOffset) &&
+                settings.LoadCellCalibrationExcitationVoltage > 0)
+            {
+                var calibration = new LoadCellCalibration(
+                    settings.LoadCellCalibrationSlope,
+                    settings.LoadCellCalibrationOffset,
+                    settings.LoadCellCalibrationExcitationVoltage);
+                calibratedLoadKg = SensorCalibration.LoadKilograms(calibration, loadAdjVoltage, Vexc);
+            }
+            else
+            {
+                calibratedLoadKg = 100387.5 * loadAdjVoltage - 3.8069375;
+            }
+            calibratedLoad = calibratedLoadKg * 9.80665; // Convert kg to N using standard gravity
+
+            pressure = SensorCalibration.ScalePressure(
+                pressureVoltage,
+                settings.PressureZeroVoltage,
+                settings.PressureFullScaleVoltage,
+                settings.PressureFullScaleValue);
+        }
+
+        private static int ParseAinAddress(string channel, int fallback)
+        {
+            if (channel.StartsWith("AIN", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(channel.AsSpan(3), out int ainNum))
+            {
+                return ainNum * 2;
+            }
+            return fallback;
         }
 
         // Starts reading data from the LabJack device
@@ -225,31 +505,9 @@ namespace Project_FREAK.Controllers
                         (settings.PressureFullScaleVoltage - settings.PressureZeroVoltage);
                 }
 
-                double loadAdjVoltage = (thrustVoltage - 1.25) / 201;
-                LoadCellCalibrationSampleUpdated?.Invoke(loadAdjVoltage, Vexc);
-                double calibratedLoadKg;
-                if (settings.LoadCellCalibrationEnabled &&
-                    double.IsFinite(settings.LoadCellCalibrationSlope) &&
-                    double.IsFinite(settings.LoadCellCalibrationOffset) &&
-                    settings.LoadCellCalibrationExcitationVoltage > 0)
-                {
-                    var calibration = new LoadCellCalibration(
-                        settings.LoadCellCalibrationSlope,
-                        settings.LoadCellCalibrationOffset,
-                        settings.LoadCellCalibrationExcitationVoltage);
-                    calibratedLoadKg = SensorCalibration.LoadKilograms(calibration, loadAdjVoltage, Vexc);
-                }
-                else
-                {
-                    calibratedLoadKg = 100387.5 * loadAdjVoltage - 3.8069375;
-                }
-                double calibratedLoad = calibratedLoadKg * 9.80665; // Convert kg to N using standard gravity
-
-                double pressure = SensorCalibration.ScalePressure(
-                    pressureVoltage,
-                    settings.PressureZeroVoltage,
-                    settings.PressureFullScaleVoltage,
-                    settings.PressureFullScaleValue);
+                ComputeScaledSensors(settings, thrustVoltage, pressureVoltage, Vexc,
+                    out double calibratedLoad, out double pressure);
+                LoadCellCalibrationSampleUpdated?.Invoke((thrustVoltage - 1.25) / 201, Vexc);
                 DataUpdated?.Invoke(thrustVoltage, calibratedLoad, pressureVoltage, pressure);
             }
             catch (Exception exception)
@@ -261,6 +519,7 @@ namespace Project_FREAK.Controllers
         // Closes the LabJack device
         public void CloseDevice()
         {
+            StopStreaming();
             _isReading = false;
             lock (_deviceLock)
             {
@@ -279,4 +538,4 @@ namespace Project_FREAK.Controllers
             GC.SuppressFinalize(this);
         }
     }
-    }
+}

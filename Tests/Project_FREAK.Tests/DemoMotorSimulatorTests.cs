@@ -55,4 +55,19 @@ public class DemoMotorSimulatorTests
         Assert.Throws<ArgumentOutOfRangeException>(() => simulator.Sample(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => simulator.Sample(double.NaN));
     }
+
+    [Fact]
+    public void SampleBatch_GeneratesExpectedPoints()
+    {
+        var simulator = new DemoMotorSimulator(new Random(42));
+        var batch = new DemoMotorReading[50];
+        simulator.SampleBatch(1.0, 0.001, batch, 5000, 1600);
+
+        Assert.Equal(50, batch.Length);
+        for (int i = 0; i < batch.Length; i++)
+        {
+            Assert.InRange(batch[i].ThrustNewtons, 0, 5000);
+            Assert.InRange(batch[i].PressurePsi, 0, 1600);
+        }
+    }
 }
