@@ -110,6 +110,8 @@ public class SettingsManager : INotifyPropertyChanged
         public double LoadCellCalibrationSlope { get; set; } // Fitted kilograms per normalized bridge-signal volt.
         public double LoadCellCalibrationOffset { get; set; } // Fitted load in kilograms at zero normalized bridge signal.
         public double LoadCellCalibrationExcitationVoltage { get; set; } // Mean calibration excitation voltage used as the reference.
+        public double LoadCellFullScaleValue { get; set; } = 500; // Rated load-cell capacity in the configured unit.
+        public string LoadCellFullScaleUnit { get; set; } = "kg"; // Rated capacity unit: kg or N.
         public double LoadCellPoint1WeightKg { get; set; } // Known mass for calibration point 1, in kilograms.
         public double LoadCellPoint1BridgeVoltage { get; set; } // Captured conditioned bridge signal for point 1, in volts.
         public double LoadCellPoint1ExcitationVoltage { get; set; } // Excitation voltage measured when point 1 was captured.
@@ -125,6 +127,9 @@ public class SettingsManager : INotifyPropertyChanged
 
         public SettingsData Clone() => (SettingsData)MemberwiseClone();
 
+        public double GetLoadCellFullScaleNewtons() =>
+            LoadCellFullScaleUnit == "N" ? LoadCellFullScaleValue : LoadCellFullScaleValue * 9.80665;
+
         public SettingsData NormalizeChannels()
         {
             if (!IsAnalogInputChannel(PressureInputChannel))
@@ -133,6 +138,10 @@ public class SettingsManager : INotifyPropertyChanged
                 LoadCellInputChannel = "AIN5";
             if (IgniterOutputChannel is not ("DAC0" or "DAC1"))
                 IgniterOutputChannel = "DAC0";
+            if (!double.IsFinite(LoadCellFullScaleValue) || LoadCellFullScaleValue <= 0)
+                LoadCellFullScaleValue = 500;
+            if (LoadCellFullScaleUnit is not ("kg" or "N"))
+                LoadCellFullScaleUnit = "kg";
 
             return this;
         }

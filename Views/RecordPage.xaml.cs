@@ -59,7 +59,8 @@ namespace Project_FREAK.Views
 
         private Task InitializeManagersAsync()
         {
-            _graphManager = new GraphManager(ThrustGraph, PressureGraph);
+            var settings = ((App)Application.Current).SettingsManager.AppliedSettings;
+            _graphManager = new GraphManager(ThrustGraph, PressureGraph, settings);
             _labjackManager = LabJackManager.Instance; // Ensure LabJackManager is thread-safe
             if (_labjackManager.IsDemo())
             {
@@ -323,9 +324,11 @@ namespace Project_FREAK.Views
         {
             try
             {
+                var settings = ((App)Application.Current).SettingsManager.AppliedSettings;
                 // Show loading text and reset message
                 Dispatcher.Invoke(() =>
                 {
+                    _graphManager.SetSensorRanges(settings);
                     LoadingTextBlock.Text = "Loading...";
                     LoadingTextBlock.Visibility = Visibility.Visible;
                 });
@@ -333,7 +336,7 @@ namespace Project_FREAK.Views
                 // Reinitialize webcam with new settings
                 await _webcamManager.ReinitializeAsync(
                     _labjackManager.IsDemo(),
-                    ((App)Application.Current).SettingsManager.AppliedSettings.RtspUrl
+                    settings.RtspUrl
                 );
 
                 // Hide loading text on success

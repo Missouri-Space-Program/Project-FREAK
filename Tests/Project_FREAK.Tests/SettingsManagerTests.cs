@@ -31,6 +31,9 @@ namespace Project_FREAK.Tests
             Assert.Equal("AIN0", mgr.AppliedSettings.PressureInputChannel);
             Assert.Equal("AIN5", mgr.AppliedSettings.LoadCellInputChannel);
             Assert.Equal("DAC0", mgr.AppliedSettings.IgniterOutputChannel);
+            Assert.Equal(500, mgr.AppliedSettings.LoadCellFullScaleValue);
+            Assert.Equal("kg", mgr.AppliedSettings.LoadCellFullScaleUnit);
+            Assert.Equal(500 * 9.80665, mgr.AppliedSettings.GetLoadCellFullScaleNewtons());
         }
 
         [Fact]
@@ -75,6 +78,28 @@ namespace Project_FREAK.Tests
         }
 
         [Fact]
+        public void UpdateAppliedSettings_NormalizesInvalidLoadCellRangeAndConvertsNewtons()
+        {
+            var mgr = new SettingsManager();
+            mgr.UpdateAppliedSettings(new SettingsManager.SettingsData
+            {
+                LoadCellFullScaleValue = double.NaN,
+                LoadCellFullScaleUnit = "lb"
+            });
+
+            Assert.Equal(500, mgr.AppliedSettings.LoadCellFullScaleValue);
+            Assert.Equal("kg", mgr.AppliedSettings.LoadCellFullScaleUnit);
+
+            mgr.UpdateAppliedSettings(new SettingsManager.SettingsData
+            {
+                LoadCellFullScaleValue = 5000,
+                LoadCellFullScaleUnit = "N"
+            });
+
+            Assert.Equal(5000, mgr.AppliedSettings.GetLoadCellFullScaleNewtons());
+        }
+
+        [Fact]
         public void UpdateAppliedSettings_RaisesEventAndWritesFiles()
         {
             Directory.CreateDirectory(cfg);
@@ -88,10 +113,16 @@ namespace Project_FREAK.Tests
                 RtspUrl = "rtsp://new",
                 PressureInputChannel = "AIN2",
                 LoadCellInputChannel = "AIN4",
-                IgniterOutputChannel = "DAC1"
+                IgniterOutputChannel = "DAC1",
+                LoadCellFullScaleValue = 5000,
+                LoadCellFullScaleUnit = "N",
+                PressureFullScaleValue = 3000
             };
             mgr.UpdateAppliedSettings(ns);
             Assert.True(fired);
+            Assert.Equal(5000, mgr.AppliedSettings.LoadCellFullScaleValue);
+            Assert.Equal("N", mgr.AppliedSettings.LoadCellFullScaleUnit);
+            Assert.Equal(3000, mgr.AppliedSettings.PressureFullScaleValue);
 
             var applied = JsonSerializer.Deserialize<SettingsManager.SettingsData>(
                 File.ReadAllText(Path.Combine(cfg, "applied_settings.json"))
@@ -100,6 +131,9 @@ namespace Project_FREAK.Tests
             Assert.Equal("AIN2", applied.PressureInputChannel);
             Assert.Equal("AIN4", applied.LoadCellInputChannel);
             Assert.Equal("DAC1", applied.IgniterOutputChannel);
+            Assert.Equal(5000, applied.LoadCellFullScaleValue);
+            Assert.Equal("N", applied.LoadCellFullScaleUnit);
+            Assert.Equal(3000, applied.PressureFullScaleValue);
 
             mgr.SaveAppliedSettingsToDisk();
             var saved = JsonSerializer.Deserialize<SettingsManager.SettingsData>(
@@ -109,6 +143,9 @@ namespace Project_FREAK.Tests
             Assert.Equal("AIN2", saved.PressureInputChannel);
             Assert.Equal("AIN4", saved.LoadCellInputChannel);
             Assert.Equal("DAC1", saved.IgniterOutputChannel);
+            Assert.Equal(5000, saved.LoadCellFullScaleValue);
+            Assert.Equal("N", saved.LoadCellFullScaleUnit);
+            Assert.Equal(3000, saved.PressureFullScaleValue);
         }
     }
 }

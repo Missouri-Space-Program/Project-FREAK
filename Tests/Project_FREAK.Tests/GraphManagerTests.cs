@@ -60,5 +60,30 @@ namespace Project_FREAK.Tests
                 gm.ClearGraphs();
             });
         }
+
+        [Fact]
+        public void SensorRanges_SetGraphLimitsAndAllowOverRangeReadings()
+        {
+            RunInSta(() =>
+            {
+                var thrustGraph = new WpfPlot();
+                var pressureGraph = new WpfPlot();
+                var settings = new SettingsManager.SettingsData
+                {
+                    LoadCellFullScaleValue = 5000,
+                    LoadCellFullScaleUnit = "N",
+                    PressureFullScaleValue = 250
+                };
+                var gm = new GraphManager(thrustGraph, pressureGraph, settings);
+
+                Assert.Equal(5000, thrustGraph.Plot.Axes.GetLimits().Top);
+                Assert.Equal(250, pressureGraph.Plot.Axes.GetLimits().Top);
+
+                gm.AddDataPoint(0, 6000, 300);
+
+                Assert.True(thrustGraph.Plot.Axes.GetLimits().Top > 6000);
+                Assert.True(pressureGraph.Plot.Axes.GetLimits().Top > 300);
+            });
+        }
     }
 }

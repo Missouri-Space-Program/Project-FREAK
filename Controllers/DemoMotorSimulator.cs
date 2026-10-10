@@ -12,10 +12,14 @@ public sealed class DemoMotorSimulator
         _random = random ?? Random.Shared;
     }
 
-    public DemoMotorReading Sample(double elapsedSeconds)
+    public DemoMotorReading Sample(double elapsedSeconds, double thrustFullScaleNewtons = 5000, double pressureFullScalePsi = 1600)
     {
         if (!double.IsFinite(elapsedSeconds) || elapsedSeconds < 0)
             throw new ArgumentOutOfRangeException(nameof(elapsedSeconds));
+        if (!double.IsFinite(thrustFullScaleNewtons) || thrustFullScaleNewtons <= 0)
+            throw new ArgumentOutOfRangeException(nameof(thrustFullScaleNewtons));
+        if (!double.IsFinite(pressureFullScalePsi) || pressureFullScalePsi <= 0)
+            throw new ArgumentOutOfRangeException(nameof(pressureFullScalePsi));
 
         double phase = elapsedSeconds % CycleDurationSeconds;
         double burnFraction = phase switch
@@ -27,8 +31,8 @@ public sealed class DemoMotorSimulator
             _ => 0
         };
 
-        double thrust = Math.Clamp(burnFraction * 5000 + Noise(75), 0, 5000);
-        double pressure = Math.Clamp(burnFraction * 1600 + Noise(24), 0, 1600);
+        double thrust = Math.Clamp(burnFraction * thrustFullScaleNewtons + Noise(thrustFullScaleNewtons * 0.015), 0, thrustFullScaleNewtons);
+        double pressure = Math.Clamp(burnFraction * pressureFullScalePsi + Noise(pressureFullScalePsi * 0.015), 0, pressureFullScalePsi);
         return new DemoMotorReading(thrust, pressure);
     }
 

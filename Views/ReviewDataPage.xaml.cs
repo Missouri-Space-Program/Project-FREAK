@@ -113,6 +113,13 @@ public partial class ReviewDataPage : Page
         ThrustPlot.Plot.Axes.Bottom.Label.Text = "Time (s)";
         ThrustPlot.Plot.Axes.Left.Label.Text = "Thrust (N)";
         ThrustPlot.Plot.Axes.AutoScale();
+        var settings = ((App)Application.Current).SettingsManager.AppliedSettings;
+        double thrustMinimum = Math.Min(0, _dataset.ThrustNewtons.Min());
+        if (thrustMinimum < 0)
+            thrustMinimum *= 1.05;
+        double thrustFullScale = settings.GetLoadCellFullScaleNewtons();
+        double thrustMaximum = _dataset.ThrustNewtons.Max();
+        ThrustPlot.Plot.Axes.SetLimitsY(thrustMinimum, thrustMaximum > thrustFullScale ? thrustMaximum * 1.05 : thrustFullScale);
         _thrustStartLine = AddIntervalLine(ThrustPlot, _intervalStartSeconds, ScottPlot.Colors.Green);
         _thrustEndLine = AddIntervalLine(ThrustPlot, _intervalEndSeconds, ScottPlot.Colors.Red);
         ThrustPlot.Refresh();
@@ -123,6 +130,14 @@ public partial class ReviewDataPage : Page
         PressurePlot.Plot.Axes.Bottom.Label.Text = "Time (s)";
         PressurePlot.Plot.Axes.Left.Label.Text = "Pressure (PSI)";
         PressurePlot.Plot.Axes.AutoScale();
+        double pressureMinimum = Math.Min(0, _dataset.PressurePsi.Min());
+        if (pressureMinimum < 0)
+            pressureMinimum *= 1.05;
+        double pressureFullScale = double.IsFinite(settings.PressureFullScaleValue) && settings.PressureFullScaleValue > 0
+            ? settings.PressureFullScaleValue
+            : 1600;
+        double pressureMaximum = _dataset.PressurePsi.Max();
+        PressurePlot.Plot.Axes.SetLimitsY(pressureMinimum, pressureMaximum > pressureFullScale ? pressureMaximum * 1.05 : pressureFullScale);
         _pressureStartLine = AddIntervalLine(PressurePlot, _intervalStartSeconds, ScottPlot.Colors.Green);
         _pressureEndLine = AddIntervalLine(PressurePlot, _intervalEndSeconds, ScottPlot.Colors.Red);
         PressurePlot.Refresh();

@@ -204,12 +204,25 @@ namespace Project_FREAK.Controllers
                 if (isDemo)
                 {
                     double elapsedSeconds = (Stopwatch.GetTimestamp() - Interlocked.Read(ref _demoProfileStartTimestamp)) / (double)Stopwatch.Frequency;
-                    var reading = _demoSimulator.Sample(elapsedSeconds);
-                    Vexc = 2.5;
-                    double loadKg = reading.ThrustNewtons / 9.81;
-                    double bridgeVoltage = (loadKg + 3.8069375) / 100387.5;
+                    var reading = _demoSimulator.Sample(
+                        elapsedSeconds,
+                        settings.GetLoadCellFullScaleNewtons(),
+                        settings.PressureFullScaleValue);
+                    double loadKg = reading.ThrustNewtons / 9.80665;
+                    bool useCalibratedDemoSignal = settings.LoadCellCalibrationEnabled &&
+                        double.IsFinite(settings.LoadCellCalibrationSlope) &&
+                        Math.Abs(settings.LoadCellCalibrationSlope) > 1e-12 &&
+                        double.IsFinite(settings.LoadCellCalibrationOffset) &&
+                        double.IsFinite(settings.LoadCellCalibrationExcitationVoltage) &&
+                        settings.LoadCellCalibrationExcitationVoltage > 0;
+                    Vexc = useCalibratedDemoSignal ? settings.LoadCellCalibrationExcitationVoltage : 2.5;
+                    double bridgeVoltage = useCalibratedDemoSignal
+                        ? (loadKg - settings.LoadCellCalibrationOffset) / settings.LoadCellCalibrationSlope
+                        : (loadKg + 3.8069375) / 100387.5;
                     thrustVoltage = 1.25 + bridgeVoltage * 201;
-                    pressureVoltage = 0.5 + reading.PressurePsi / 400;
+                    pressureVoltage = settings.PressureZeroVoltage +
+                        reading.PressurePsi / settings.PressureFullScaleValue *
+                        (settings.PressureFullScaleVoltage - settings.PressureZeroVoltage);
                 }
 
                 double loadAdjVoltage = (thrustVoltage - 1.25) / 201;

@@ -41,9 +41,12 @@ public partial class GeneralSettingsPage : Page
         PressureInputChannelComboBox.ItemsSource = inputChannels;
         LoadCellInputChannelComboBox.ItemsSource = inputChannels;
         IgniterOutputChannelComboBox.ItemsSource = new[] { "DAC0", "DAC1" };
+        LoadCellFullScaleUnitComboBox.ItemsSource = new[] { "kg", "N" };
         PressureInputChannelComboBox.SelectedItem = _pendingSettings.PressureInputChannel;
         LoadCellInputChannelComboBox.SelectedItem = _pendingSettings.LoadCellInputChannel;
         IgniterOutputChannelComboBox.SelectedItem = _pendingSettings.IgniterOutputChannel;
+        LoadCellFullScaleValueTextBox.Text = _pendingSettings.LoadCellFullScaleValue.ToString("G", CultureInfo.CurrentCulture);
+        LoadCellFullScaleUnitComboBox.SelectedItem = _pendingSettings.LoadCellFullScaleUnit;
         UseRawDataForReviewCheckBox.DataContext = _pendingSettings;
 
         PressureZeroVoltageTextBox.Text = _pendingSettings.PressureZeroVoltage.ToString("G", CultureInfo.CurrentCulture);
@@ -406,6 +409,12 @@ public partial class GeneralSettingsPage : Page
                double.IsFinite(value) && value >= 0;
     }
 
+    private static bool TryReadPositive(string text, out double value)
+    {
+        return double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value) &&
+               double.IsFinite(value) && value > 0;
+    }
+
     private bool TryReadPressureScale(out double zeroVoltage, out double fullScaleVoltage, out double fullScaleValue)
     {
         zeroVoltage = 0;
@@ -420,6 +429,14 @@ public partial class GeneralSettingsPage : Page
 
     private bool UpdatePendingSettings()
     {
+        if (!TryReadPositive(LoadCellFullScaleValueTextBox.Text, out double loadCellFullScaleValue) ||
+            LoadCellFullScaleUnitComboBox.SelectedItem is not string loadCellFullScaleUnit)
+        {
+            LoadCellCapacityValidationText.Text = "Enter a positive rated capacity and choose kg or N.";
+            return false;
+        }
+
+        LoadCellCapacityValidationText.Text = string.Empty;
         if (!TryReadPressureScale(out double zeroVoltage, out double fullScaleVoltage, out double fullScaleValue))
         {
             PressureValidationText.Text = "Enter a zero voltage, a higher full-scale voltage, and a positive full-scale pressure.";
@@ -443,6 +460,8 @@ public partial class GeneralSettingsPage : Page
         _pendingSettings.PressureZeroVoltage = zeroVoltage;
         _pendingSettings.PressureFullScaleVoltage = fullScaleVoltage;
         _pendingSettings.PressureFullScaleValue = fullScaleValue;
+        _pendingSettings.LoadCellFullScaleValue = loadCellFullScaleValue;
+        _pendingSettings.LoadCellFullScaleUnit = loadCellFullScaleUnit;
         _pendingSettings.PressureInputChannel = pressureChannel;
         _pendingSettings.LoadCellInputChannel = loadCellChannel;
         _pendingSettings.IgniterOutputChannel = igniterChannel;

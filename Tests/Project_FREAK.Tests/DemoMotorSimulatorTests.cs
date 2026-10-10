@@ -37,6 +37,17 @@ public class DemoMotorSimulatorTests
     }
 
     [Fact]
+    public void Sample_UsesConfiguredSensorRanges()
+    {
+        var simulator = new DemoMotorSimulator(new Random(42));
+
+        var reading = simulator.Sample(4, thrustFullScaleNewtons: 5000, pressureFullScalePsi: 250);
+
+        Assert.InRange(reading.ThrustNewtons, 4925, 5000);
+        Assert.InRange(reading.PressurePsi, 246.25, 250);
+    }
+
+    [Fact]
     public void Sample_RejectsInvalidElapsedTime()
     {
         var simulator = new DemoMotorSimulator(new Random(42));

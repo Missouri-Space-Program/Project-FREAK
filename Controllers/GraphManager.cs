@@ -12,8 +12,14 @@ namespace Project_FREAK.Controllers
         private readonly WpfPlot _thrustGraph;
         private readonly WpfPlot _pressureGraph;
         private const int WindowSize = 2500; // Size of the window for displaying data
+        private double _thrustFullScaleNewtons;
+        private double _pressureFullScalePsi;
+        private double _thrustMinimum;
+        private double _thrustMaximum;
+        private double _pressureMinimum;
+        private double _pressureMaximum;
 
-        public GraphManager(WpfPlot thrustGraph, WpfPlot pressureGraph)
+        public GraphManager(WpfPlot thrustGraph, WpfPlot pressureGraph, SettingsManager.SettingsData? settings = null)
         {
             _thrustGraph = thrustGraph;
             _pressureGraph = pressureGraph;
@@ -21,6 +27,17 @@ namespace Project_FREAK.Controllers
             // Initialize the graphs with titles and labels
             _thrustStreamer = InitializeGraph(_thrustGraph, "Thrust Over Time", "Thrust (N)");
             _pressureStreamer = InitializeGraph(_pressureGraph, "Pressure Over Time", "Pressure (PSI)");
+            SetSensorRanges(settings ?? new SettingsManager.SettingsData());
+        }
+
+        public void SetSensorRanges(SettingsManager.SettingsData settings)
+        {
+            ArgumentNullException.ThrowIfNull(settings);
+            _thrustFullScaleNewtons = settings.GetLoadCellFullScaleNewtons();
+            _pressureFullScalePsi = double.IsFinite(settings.PressureFullScaleValue) && settings.PressureFullScaleValue > 0
+                ? settings.PressureFullScaleValue
+                : 1600;
+            UpdateAxisLimits();
         }
 
         // Initializes a graph with a title and y-axis label
@@ -44,6 +61,7 @@ namespace Project_FREAK.Controllers
         {
             _thrustStreamer.Add(thrust);
             _pressureStreamer.Add(pressure);
+            TrackObservedRange(thrust, pressure);
 
             RefreshGraphs(); // Refresh the graphs to display the new data
         }
@@ -55,8 +73,10 @@ namespace Project_FREAK.Controllers
             {
                 _thrustStreamer.Add(thrust);
                 _pressureStreamer.Add(pressure);
+                TrackObservedRange(thrust, pressure);
             }
 
+            UpdateAxisLimits();
             RefreshGraphs();
         }
 
@@ -72,7 +92,28 @@ namespace Project_FREAK.Controllers
         {
             _thrustStreamer.Clear();
             _pressureStreamer.Clear();
+            _thrustMinimum = _thrustMaximum = 0;
+            _pressureMinimum = _pressureMaximum = 0;
+            UpdateAxisLimits();
             RefreshGraphs();
         }
+
+        private void TrackObservedRange(double thrust, double pressure)
+        {
+            _thrustMinimum = Math.Min(_thrustMinimum, thrust);
+            _thrustMaximum = Math.Max(_thrustMaximum, thrust);
+            _pressureMinimum = Math.Min(_pressureMinimum, pressure);
+            _pressureMaximum = Math.Max(_pressureMaximum, pressure);
+            UpdateAxisLimits();
+        }
+
+        private void UpdateAxisLimits()
+        {
+            _thrustGraph.Plot.Axes.SetLimitsY(Math.Min(0, _thrustMinimum), GetUpperLimit(_thrustFullScaleNewtons, _thrustMaximum));
+            _pressureGraph.Plot.Axes.SetLimitsY(Math.Min(0, _pressureMinimum), GetUpperLimit(_pressureFullScalePsi, _pressureMaximum));
+        }
+
+        private static double GetUpperLimit(double fullScale, double observedMaximum) =>
+            observedMaximum > fullScale ? observedMaximum * 1.05 : fullScale;
     }
 }

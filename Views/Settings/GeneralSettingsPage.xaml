@@ -103,8 +103,20 @@
                 <TextBlock Text="Use two distinct known loads applied steadily along the load cell's sensing axis. Enter their masses in kg and capture each while the load is settled; captured samples include both the bridge signal and excitation voltage. Raw bridge output varies with excitation, so the app reads excitation feedback on AIN6. Pressure scaling uses the sensor's zero and full-scale output voltages and rated pressure." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <TextBlock x:Name="SimulationNoticeText" Text="SIMULATION: no LabJack is detected. Live values are simulated and must not be used to calibrate hardware." Foreground="Orange" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,12"/>
 
-                <GroupBox Header="Load cell — two-point system calibration">
+                <GroupBox Header="Load cell — rated capacity and two-point calibration">
                     <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="190"/>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Rated capacity:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="LoadCellFullScaleValueTextBox" Grid.Column="1" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="LoadCellFullScaleUnitComboBox" Grid.Column="2"/>
+                        </Grid>
+                        <TextBlock Text="The rated capacity sets the thrust graph range. Enter values such as 500 kg or 5000 N; readings above the rating remain visible." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="LoadCellCapacityValidationText" Foreground="OrangeRed" Margin="0,0,0,8"/>
                         <TextBlock Text="Each captured point pairs a known mass with the measured bridge signal and excitation voltage. The two points determine the load-cell scale and zero offset. Use masses or equivalent reference forces that load the cell in the same direction and setup as the motor test; a no-load point is valid if the other point applies a different known load." TextWrapping="Wrap" Margin="0,0,0,10"/>
                         <TextBlock x:Name="CalibrationLoadCellLiveText" Text="Waiting for live load-cell readings…" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <Grid Margin="0,0,0,8">
