@@ -155,6 +155,13 @@ namespace Project_FREAK.Views
         {
             Dispatcher.Invoke(() =>
             {
+                // Strict safety check: Never ignite or record if not armed or already recording
+                if (!_labjackManager.GetArmedStatus() || _isRecording)
+                {
+                    CancelCountdownAndResetStartButton();
+                    return;
+                }
+
                 StartTestTextBlock.Text = "Igniting Motor!"; // Update text to indicate motor ignition
                 _labjackManager.IgniteMotor(); // Ignite the motor
                 StartTestRecording(); // Start recording after ignition
@@ -164,6 +171,18 @@ namespace Project_FREAK.Views
         // Handles the click event of the Arm button
         private void ArmButton_Click(object sender, RoutedEventArgs e)
         {
+            // If countdown is active, immediately cancel it and reset the Start button
+            if (_countdownService.IsRunning)
+            {
+                CancelCountdownAndResetStartButton();
+            }
+
+            // If currently recording and user presses Arm/Disarm, stop recording and ensure data is saved
+            if (_isRecording)
+            {
+                StopTestAndSave(showPrompt: true);
+            }
+
             _labjackManager.ArmDisarmIgniter(); // Arm or disarm the igniter
             UpdateArmingUI(_labjackManager.GetArmedStatus()); // Update the UI to reflect the arming status
         }
@@ -175,6 +194,10 @@ namespace Project_FREAK.Views
             ArmTextBlock.Text = isArmed ? "Disarm" : "Arm"; // Update button text
             StartButton.Background = isArmed ? Brushes.Orange : Brushes.DarkGray; // Change start button color
             StartTestTextBlock.TextDecorations = isArmed ? null : TextDecorations.Strikethrough;
+            if (!isArmed && !_isRecording)
+            {
+                StartTestTextBlock.Text = "Start";
+            }
         }
 
         // Handles the click event of the Start Test button
@@ -186,60 +209,62 @@ namespace Project_FREAK.Views
             }
             else if (_isRecording)
             {
-                _isRecording = false;
-                if (_isVideoRecording)
-                    _webcamManager.StopRecording();
-                _isVideoRecording = false;
-                StartTestTextBlock.Text = "Start";
-                StartButton.Background = Brushes.Green;
-                SaveDataButton.IsEnabled = false;
-
-                // Stop data recorder before saving
-                _dataRecorder.StopRecording();
-
-                if (_currentSessionFolder != null)
-                {
-                    SaveData();
-                }
-
-                _currentSessionFolder = null;
-                _currentVideoPath = null;
+                StopTestAndSave(showPrompt: true);
             }
         }
 
-        private void SaveData()
+        /// <summary>
+        /// Cancels any active countdown and restores the Start button text and appearance.
+        /// </summary>
+        private void CancelCountdownAndResetStartButton()
         {
-            try
-            {
-                _isSaving = true;
-                var jsonFileName = $"data_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
-                var jsonPath = Path.Combine(_currentSessionFolder!, jsonFileName);
-
-                _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath());
-
-                MessageBox.Show(GetSaveSummary(), "Success",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error saving data: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                _isSaving = false;
-            }
+            _countdownService.CancelCountdown();
+            StartTestTextBlock.Text = "Start";
+            StartButton.Background = _labjackManager.GetArmedStatus() ? Brushes.Orange : Brushes.DarkGray;
+            StartTestTextBlock.TextDecorations = _labjackManager.GetArmedStatus() ? null : TextDecorations.Strikethrough;
         }
 
-        // Handles the click event of the Save button
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Stops active recording, safely saves sensor data & video, and resets UI state.
+        /// </summary>
+        /// <param name="showPrompt">Whether to show a message box summarizing the save.</param>
+        private void StopTestAndSave(bool showPrompt)
         {
-            if (_currentSessionFolder == null)
+            if (!_isRecording && _currentSessionFolder == null)
             {
-                MessageBox.Show("No active test session to save!", "Warning",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            _isRecording = false;
+
+            if (_isVideoRecording)
+            {
+                try
+                {
+                    _webcamManager.StopRecording();
+                }
+                catch { /* Ignore camera shutdown errors during save */ }
+            }
+            _isVideoRecording = false;
+
+            StartTestTextBlock.Text = "Start";
+            StartButton.Background = _labjackManager.GetArmedStatus() ? Brushes.Orange : Brushes.DarkGray;
+
+            // Stop data recorder to flush and close temporary stream before exporting
+            _dataRecorder.StopRecording();
+
+            if (_currentSessionFolder != null)
+            {
+                SaveData(showPrompt);
+            }
+
+            _currentSessionFolder = null;
+            _currentVideoPath = null;
+        }
+
+        private void SaveData(bool showPrompt = true)
+        {
+            if (_currentSessionFolder == null) return;
 
             try
             {
@@ -249,13 +274,19 @@ namespace Project_FREAK.Views
 
                 _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath());
 
-                MessageBox.Show(GetSaveSummary(), "Success",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                if (showPrompt)
+                {
+                    MessageBox.Show(GetSaveSummary(), "Success",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving data: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                if (showPrompt)
+                {
+                    MessageBox.Show($"Error saving data: {ex.Message}", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             finally
             {
@@ -266,6 +297,15 @@ namespace Project_FREAK.Views
         // Handles the Unloaded event of the page
         private void RecordPage_Unloaded(object sender, RoutedEventArgs e)
         {
+            // Immediately cancel any pending countdown
+            _countdownService.CancelCountdown();
+
+            // Ensure any active recording is safely saved if the user navigates away or closes the page
+            if (_isRecording || _currentSessionFolder != null)
+            {
+                StopTestAndSave(showPrompt: false);
+            }
+
             // Cleanup resources
             _dataRecorder.Dispose();
             _stopwatch.Reset();
@@ -325,7 +365,6 @@ namespace Project_FREAK.Views
 
                 _dataRecorder.StartRecording(_currentSessionFolder);
                 _isRecording = true;
-                SaveDataButton.IsEnabled = true;
                 StartTestTextBlock.Text = "Stop Recording";
                 StartButton.Background = Brushes.Red;
 
@@ -345,7 +384,6 @@ namespace Project_FREAK.Views
             catch (Exception ex)
             {
                 _isRecording = false;
-                SaveDataButton.IsEnabled = false;
                 _dataRecorder.StopRecording();
                 MessageBox.Show($"Error starting sensor data recording: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);

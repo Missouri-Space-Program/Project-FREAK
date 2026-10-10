@@ -21,4 +21,16 @@ public partial class ModeSelectionPage : Page
         if (Window.GetWindow(this) is MainWindow mainWindow)
             mainWindow.NavigateToPage(new ReviewDataPage());
     }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (Window.GetWindow(this) is MainWindow mainWindow)
+            mainWindow.OpenSettingsWindow();
+    }
+
+    private void HelpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (Window.GetWindow(this) is MainWindow mainWindow)
+            mainWindow.NavigateToPage(new HelpPage());
+    }
 }

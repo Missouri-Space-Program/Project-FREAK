@@ -47,6 +47,27 @@
                     </StackPanel>
                 </GroupBox>
 
+                <GroupBox Header="Ethernet &amp; Test Stand Network Setup">
+                    <StackPanel>
+                        <TextBlock Text="When connecting an Ethernet cable from your PC to the test stand, configure your Ethernet adapter to the static subnet (192.168.20.2) so your machine can communicate with the LabJack (192.168.20.3) and camera (192.168.20.4). When done testing, restore your adapter back to DHCP." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Network adapter:" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="NetworkAdaptersComboBox" Grid.Column="1" DisplayMemberPath="DisplayName" Margin="0,0,10,0" SelectionChanged="NetworkAdaptersComboBox_SelectionChanged"/>
+                            <Button x:Name="RefreshAdaptersButton" Grid.Column="2" Content="Refresh" Padding="12,4" Click="RefreshAdaptersButton_Click"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <Button x:Name="ConfigureStaticIpButton" Content="Set Test Stand IP (192.168.20.2)" Padding="12,5" Margin="0,0,10,0" Click="ConfigureStaticIpButton_Click"/>
+                            <Button x:Name="RestoreDhcpButton" Content="Reset to DHCP (Automatic)" Padding="12,5" Click="RestoreDhcpButton_Click"/>
+                        </StackPanel>
+                        <TextBlock x:Name="NetworkStatusText" Text="" Margin="0,8,0,0" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </GroupBox>
+
                 <GroupBox Header="Hardware channel assignments">
                     <StackPanel>
                         <TextBlock Text="AIN channels read analog sensor voltages; choose the channel physically wired to each sensor. Choose the DAC wired to the igniter output. AIN6 is reserved for automatic load-cell excitation-voltage feedback, and the pressure and load-cell signals must use different AIN channels." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>

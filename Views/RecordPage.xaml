@@ -4,6 +4,37 @@
       xmlns:ScottPlot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
       Background="#1E1E1E">
 
+    <Page.Resources>
+        <Style x:Key="ControlPanelButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.75"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
     <Grid Margin="5">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*" />
@@ -74,7 +105,7 @@
                 Margin="2"
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch"
-                Padding="5">
+                Padding="8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -85,53 +116,42 @@
                            FontSize="20"
                            Foreground="White" 
                            TextAlignment="Center" 
-                           Margin="0,0,0,2"/>
+                           Margin="0,0,0,8"/>
 
-                <!-- 2x2 Button Grid -->
+                <!-- Button Grid -->
                 <Grid Grid.Row="1" 
                       HorizontalAlignment="Stretch" 
                       VerticalAlignment="Stretch"
                       Margin="0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Buttons with scaling text -->
-                    <Button x:Name="StartButton" Grid.Row="0" Grid.Column="0" 
+                    <Button x:Name="StartButton" Grid.Column="0" 
+                            Style="{StaticResource ControlPanelButtonStyle}"
                             Background="DarkGray" 
-                            Margin="1"
+                            Margin="4,4,6,4"
                             HorizontalAlignment="Stretch" 
                             VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch"
                             Click="StartTestButton_Click">
-                        <Viewbox Stretch="Uniform">
+                        <Viewbox Stretch="Uniform" Margin="10">
                             <TextBlock x:Name="StartTestTextBlock" Text="Start" Foreground="White" Margin="2" TextDecorations="Strikethrough"/>
                         </Viewbox>
                     </Button>
 
-                    <Button x:Name="ArmButton" Grid.Row="0" Grid.Column="1" 
+                    <Button x:Name="ArmButton" Grid.Column="1" 
+                            Style="{StaticResource ControlPanelButtonStyle}"
                             Background="Green" 
-                            Margin="1"
+                            Margin="6,4,4,4"
                             HorizontalAlignment="Stretch" 
                             VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch"
                             Click="ArmButton_Click">
-                        <Viewbox Stretch="Uniform">
+                        <Viewbox Stretch="Uniform" Margin="10">
                             <TextBlock x:Name="ArmTextBlock" Text="Arm" Foreground="White" Margin="2"/>
                         </Viewbox>
                     </Button>
-
-                    <Button x:Name="SaveDataButton" Grid.Row="1" Grid.ColumnSpan="2"
-                            Content="Save Data" IsEnabled="False"
-                            Background="#555" Foreground="White" Margin="1"
-                            Click="SaveButton_Click"/>
                 </Grid>
             </Grid>
         </Border>

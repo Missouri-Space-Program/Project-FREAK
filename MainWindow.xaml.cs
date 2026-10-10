@@ -40,11 +40,21 @@ namespace Project_FREAK
 
         private void SettingsMenuItem_Click(object sender, RoutedEventArgs e)
         {
+            OpenSettingsWindow();
+        }
+
+        public void OpenSettingsWindow()
+        {
             var settingsWindow = new SettingsWindow
             {
                 Owner = this // Set the owner of the SettingsWindow to be the MainWindow
             };
             settingsWindow.Show();
+        }
+
+        private void HelpMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToPage(new HelpPage());
         }
 
         private void RecordMenuItem_Click(object sender, RoutedEventArgs e)

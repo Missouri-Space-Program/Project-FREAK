@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Net.NetworkInformation;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -11,6 +13,7 @@ public partial class GeneralSettingsPage : Page
 {
     private readonly SettingsManager _settingsManager;
     private readonly LabJackManager _labJackManager;
+    private readonly NetworkConfigurationService _networkConfigService = new();
     private readonly Stopwatch _uiUpdateStopwatch = Stopwatch.StartNew();
     private readonly object _sampleLock = new();
     private SettingsManager.SettingsData _pendingSettings;
@@ -69,6 +72,7 @@ public partial class GeneralSettingsPage : Page
         Unloaded += SettingsPage_Unloaded;
         UpdateDeviceStatus();
         UpdateLiveDisplays();
+        RefreshNetworkAdapters();
     }
 
     private void LoadCellSampleUpdated(double bridgeVoltage, double excitationVoltage)
@@ -127,6 +131,157 @@ public partial class GeneralSettingsPage : Page
         DeviceStatusText.Text = "Reconnecting…";
         _labJackManager.ReconnectDevice();
         UpdateDeviceStatus();
+    }
+
+    private void RefreshNetworkAdapters()
+    {
+        var adapters = _networkConfigService.GetAvailableAdapters();
+        NetworkAdaptersComboBox.ItemsSource = adapters;
+
+        if (adapters.Count > 0)
+        {
+            var preselected = adapters.FirstOrDefault(a => a.IsTestStandConfigured)
+                              ?? adapters.FirstOrDefault(a => a.InterfaceType == NetworkInterfaceType.Ethernet && a.IsConnected)
+                              ?? adapters.FirstOrDefault(a => a.IsConnected)
+                              ?? adapters[0];
+
+            NetworkAdaptersComboBox.SelectedItem = preselected;
+            UpdateNetworkStatusForAdapter(preselected);
+        }
+        else
+        {
+            NetworkStatusText.Text = "No network adapters detected.";
+            NetworkStatusText.Foreground = Brushes.Orange;
+        }
+    }
+
+    private void UpdateNetworkStatusForAdapter(NetworkConfigurationService.AdapterInfo? adapter)
+    {
+        if (adapter == null)
+        {
+            NetworkStatusText.Text = string.Empty;
+            return;
+        }
+
+        if (adapter.IsTestStandConfigured)
+        {
+            NetworkStatusText.Text = $"Configured for test stand: {adapter.CurrentIPv4} ({adapter.Name})";
+            NetworkStatusText.Foreground = Brushes.LimeGreen;
+        }
+        else if (adapter.IsConnected)
+        {
+            var mode = adapter.IsDhcpEnabled ? "DHCP" : "Static";
+            NetworkStatusText.Text = $"Current: {adapter.CurrentIPv4 ?? "No IP"} ({mode}) on {adapter.Name}. Click below to set test stand IP.";
+            NetworkStatusText.Foreground = Brushes.White;
+        }
+        else
+        {
+            NetworkStatusText.Text = $"{adapter.Name} is disconnected. Connect Ethernet cable to the test stand.";
+            NetworkStatusText.Foreground = Brushes.Orange;
+        }
+    }
+
+    private void NetworkAdaptersComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (NetworkAdaptersComboBox.SelectedItem is NetworkConfigurationService.AdapterInfo adapter)
+        {
+            UpdateNetworkStatusForAdapter(adapter);
+        }
+    }
+
+    private void RefreshAdaptersButton_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshNetworkAdapters();
+    }
+
+    private async void ConfigureStaticIpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (NetworkAdaptersComboBox.SelectedItem is not NetworkConfigurationService.AdapterInfo adapter)
+        {
+            NetworkStatusText.Text = "Please select a network adapter to configure.";
+            NetworkStatusText.Foreground = Brushes.Orange;
+            return;
+        }
+
+        SetNetworkControlsEnabled(false);
+        NetworkStatusText.Text = $"Configuring {adapter.Name} to {NetworkConfigurationService.DefaultTestStandIp}... Please accept the administrator prompt.";
+        NetworkStatusText.Foreground = Brushes.Orange;
+
+        try
+        {
+            var result = await _networkConfigService.ConfigureStaticTestStandIpAsync(adapter.Name);
+            if (result.Success)
+            {
+                NetworkStatusText.Text = result.Message;
+                NetworkStatusText.Foreground = Brushes.LimeGreen;
+                RefreshNetworkAdapters();
+
+                await Task.Delay(1000);
+                _labJackManager.ReconnectDevice();
+                UpdateDeviceStatus();
+            }
+            else
+            {
+                NetworkStatusText.Text = result.Message;
+                NetworkStatusText.Foreground = result.CancelledByUser ? Brushes.Orange : Brushes.OrangeRed;
+            }
+        }
+        catch (Exception ex)
+        {
+            NetworkStatusText.Text = $"Error: {ex.Message}";
+            NetworkStatusText.Foreground = Brushes.OrangeRed;
+        }
+        finally
+        {
+            SetNetworkControlsEnabled(true);
+        }
+    }
+
+    private async void RestoreDhcpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (NetworkAdaptersComboBox.SelectedItem is not NetworkConfigurationService.AdapterInfo adapter)
+        {
+            NetworkStatusText.Text = "Please select a network adapter to restore.";
+            NetworkStatusText.Foreground = Brushes.Orange;
+            return;
+        }
+
+        SetNetworkControlsEnabled(false);
+        NetworkStatusText.Text = $"Restoring {adapter.Name} to automatic DHCP... Please accept the administrator prompt.";
+        NetworkStatusText.Foreground = Brushes.Orange;
+
+        try
+        {
+            var result = await _networkConfigService.ConfigureDhcpAsync(adapter.Name);
+            if (result.Success)
+            {
+                NetworkStatusText.Text = result.Message;
+                NetworkStatusText.Foreground = Brushes.LimeGreen;
+                RefreshNetworkAdapters();
+            }
+            else
+            {
+                NetworkStatusText.Text = result.Message;
+                NetworkStatusText.Foreground = result.CancelledByUser ? Brushes.Orange : Brushes.OrangeRed;
+            }
+        }
+        catch (Exception ex)
+        {
+            NetworkStatusText.Text = $"Error: {ex.Message}";
+            NetworkStatusText.Foreground = Brushes.OrangeRed;
+        }
+        finally
+        {
+            SetNetworkControlsEnabled(true);
+        }
+    }
+
+    private void SetNetworkControlsEnabled(bool enabled)
+    {
+        ConfigureStaticIpButton.IsEnabled = enabled;
+        RestoreDhcpButton.IsEnabled = enabled;
+        RefreshAdaptersButton.IsEnabled = enabled;
+        NetworkAdaptersComboBox.IsEnabled = enabled;
     }
 
     private void CapturePoint1_Click(object sender, RoutedEventArgs e) => CapturePoint(Point1WeightTextBox, true);

@@ -19,6 +19,11 @@ namespace Project_FREAK.Controllers
         // Initializes the timer interval
         public void InitializeTimer(TimeSpan interval) => _timer.Interval = interval;
 
+        /// <summary>
+        /// Indicates whether a countdown is actively running.
+        /// </summary>
+        public bool IsRunning => _timer.IsEnabled;
+
         // Toggles the countdown timer on or off
         public void ToggleCountdown(int seconds)
         {
@@ -32,6 +37,18 @@ namespace Project_FREAK.Controllers
                 _timer.Start();
             }
             CountdownUpdated?.Invoke($"00:{_remainingSeconds}"); // Update the countdown display
+        }
+
+        /// <summary>
+        /// Immediately cancels any active countdown without firing CountdownFinished.
+        /// </summary>
+        public void CancelCountdown()
+        {
+            if (_timer.IsEnabled)
+            {
+                _timer.Stop();
+            }
+            _remainingSeconds = 0;
         }
 
         // Handles the Tick event of the timer
