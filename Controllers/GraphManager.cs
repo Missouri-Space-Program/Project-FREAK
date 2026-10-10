@@ -48,6 +48,18 @@ namespace Project_FREAK.Controllers
             RefreshGraphs(); // Refresh the graphs to display the new data
         }
 
+        // Adds multiple data points and refreshes the graphs once to minimize UI thread overhead
+        public void AddDataPoints(IEnumerable<(double time, double thrust, double pressure)> points)
+        {
+            foreach (var (_, thrust, pressure) in points)
+            {
+                _thrustStreamer.Add(thrust);
+                _pressureStreamer.Add(pressure);
+            }
+
+            RefreshGraphs();
+        }
+
         // Refreshes the graphs to display the latest data
         public void RefreshGraphs()
         {

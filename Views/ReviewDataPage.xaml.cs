@@ -15,6 +15,7 @@ public partial class ReviewDataPage : Page
     private string? _loadedJsonPath;
     private string? _videoPath;
     private bool _updatingVideoSlider;
+    private bool _videoEnded;
     private double _intervalStartSeconds;
     private double _intervalEndSeconds;
     private ScottPlot.Plottables.VerticalLine? _thrustStartLine;
@@ -262,6 +263,7 @@ public partial class ReviewDataPage : Page
     private void LoadVideo(string? path)
     {
         _videoTimer.Stop();
+        _videoEnded = false;
         VideoPlayer.Stop();
         VideoPlayer.Source = null;
         _videoPath = path;
@@ -291,6 +293,12 @@ public partial class ReviewDataPage : Page
         }
         else
         {
+            if (_videoEnded)
+            {
+                VideoPlayer.Position = TimeSpan.Zero;
+                _videoEnded = false;
+            }
+
             VideoPlayer.Play();
             _videoTimer.Start();
             PlayPauseButton.Content = "Pause";
@@ -311,15 +319,27 @@ public partial class ReviewDataPage : Page
 
     private void VideoPlayer_MediaEnded(object sender, RoutedEventArgs e)
     {
+        VideoPlayer.Pause();
         _videoTimer.Stop();
-        VideoPlayer.Position = TimeSpan.Zero;
+        _videoEnded = true;
+        if (VideoPlayer.NaturalDuration.HasTimeSpan)
+        {
+            _updatingVideoSlider = true;
+            VideoSeekSlider.Value = VideoSeekSlider.Maximum;
+            _updatingVideoSlider = false;
+        }
         PlayPauseButton.Content = "Play";
     }
 
     private void VideoSeekSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (!_updatingVideoSlider && VideoPlayer.Source is not null && VideoSeekSlider.IsEnabled)
-            VideoPlayer.Position = TimeSpan.FromSeconds(VideoSeekSlider.Value);
+        {
+            TimeSpan seekPosition = TimeSpan.FromSeconds(VideoSeekSlider.Value);
+            if (_videoEnded && VideoPlayer.NaturalDuration.HasTimeSpan && seekPosition < VideoPlayer.NaturalDuration.TimeSpan)
+                _videoEnded = false;
+            VideoPlayer.Position = seekPosition;
+        }
     }
 
     private void VideoTimer_Tick(object? sender, EventArgs e)

@@ -103,25 +103,25 @@ public class SettingsManager : INotifyPropertyChanged
     // Class representing the settings data
     public class SettingsData
     {
-        public bool DemoModeEnabled { get; set; } // Indicates if demo mode is enabled
-        public bool UseRawDataForReview { get; set; } // Recalculate review data from raw sensor voltages instead of stored engineering units
-        public string RtspUrl { get; set; } = "rtsp://admin:MSPMOTORTEST2025@192.168.20.4:554/cam/realmonitor?channel=1&subtype=0"; // Default RTSP URL
-        public bool LoadCellCalibrationEnabled { get; set; }
-        public double LoadCellCalibrationSlope { get; set; }
-        public double LoadCellCalibrationOffset { get; set; }
-        public double LoadCellCalibrationExcitationVoltage { get; set; }
-        public double LoadCellPoint1WeightKg { get; set; }
-        public double LoadCellPoint1BridgeVoltage { get; set; }
-        public double LoadCellPoint1ExcitationVoltage { get; set; }
-        public double LoadCellPoint2WeightKg { get; set; }
-        public double LoadCellPoint2BridgeVoltage { get; set; }
-        public double LoadCellPoint2ExcitationVoltage { get; set; }
-        public double PressureZeroVoltage { get; set; } = 0.5;
-        public double PressureFullScaleVoltage { get; set; } = 4.5;
-        public double PressureFullScaleValue { get; set; } = 1600;
-        public string PressureInputChannel { get; set; } = "AIN0";
-        public string LoadCellInputChannel { get; set; } = "AIN5";
-        public string IgniterOutputChannel { get; set; } = "DAC0";
+        public bool DemoModeEnabled { get; set; } // Legacy flag; current demo mode is selected when a LabJack connection is unavailable.
+        public bool UseRawDataForReview { get; set; } // Recalculate review values from recorded sensor voltages instead of stored engineering units.
+        public string RtspUrl { get; set; } = "rtsp://admin:MSPMOTORTEST2025@192.168.20.4:554/cam/realmonitor?channel=1&subtype=0"; // Camera stream URL used by the recording view.
+        public bool LoadCellCalibrationEnabled { get; set; } // Use the saved two-point load-cell calibration instead of the fallback scale.
+        public double LoadCellCalibrationSlope { get; set; } // Fitted kilograms per normalized bridge-signal volt.
+        public double LoadCellCalibrationOffset { get; set; } // Fitted load in kilograms at zero normalized bridge signal.
+        public double LoadCellCalibrationExcitationVoltage { get; set; } // Mean calibration excitation voltage used as the reference.
+        public double LoadCellPoint1WeightKg { get; set; } // Known mass for calibration point 1, in kilograms.
+        public double LoadCellPoint1BridgeVoltage { get; set; } // Captured conditioned bridge signal for point 1, in volts.
+        public double LoadCellPoint1ExcitationVoltage { get; set; } // Excitation voltage measured when point 1 was captured.
+        public double LoadCellPoint2WeightKg { get; set; } // Known mass for calibration point 2, in kilograms.
+        public double LoadCellPoint2BridgeVoltage { get; set; } // Captured conditioned bridge signal for point 2, in volts.
+        public double LoadCellPoint2ExcitationVoltage { get; set; } // Excitation voltage measured when point 2 was captured.
+        public double PressureZeroVoltage { get; set; } = 0.5; // Sensor output voltage at zero pressure, in volts.
+        public double PressureFullScaleVoltage { get; set; } = 4.5; // Sensor output voltage at its rated full-scale pressure, in volts.
+        public double PressureFullScaleValue { get; set; } = 1600; // Pressure represented by PressureFullScaleVoltage, in PSI.
+        public string PressureInputChannel { get; set; } = "AIN0"; // LabJack analog input carrying the pressure sensor signal.
+        public string LoadCellInputChannel { get; set; } = "AIN5"; // LabJack analog input carrying the conditioned load-cell signal.
+        public string IgniterOutputChannel { get; set; } = "DAC0"; // LabJack analog output connected to the igniter control circuit.
 
         public SettingsData Clone() => (SettingsData)MemberwiseClone();
 

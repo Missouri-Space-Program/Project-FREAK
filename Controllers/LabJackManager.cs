@@ -230,7 +230,7 @@ namespace Project_FREAK.Controllers
                 {
                     calibratedLoadKg = 100387.5 * loadAdjVoltage - 3.8069375;
                 }
-                double calibratedLoad = calibratedLoadKg * 9.81;
+                double calibratedLoad = calibratedLoadKg * 9.80665; // Convert kg to N using standard gravity
 
                 double pressure = SensorCalibration.ScalePressure(
                     pressureVoltage,

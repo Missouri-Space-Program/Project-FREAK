@@ -14,6 +14,7 @@ namespace Project_FREAK.Controllers
         public List<double> RawThrustVoltages { get; } = new();
         public List<double> RawPressureVoltages { get; } = new();
 
+        private readonly object _syncLock = new();
         private StreamWriter? _dataWriter;
         private string? _tempDataPath;
 
@@ -29,14 +30,16 @@ namespace Project_FREAK.Controllers
         public void AddDataPoint(double time, double thrust, double pressure,
                                double thrustVoltage, double pressureVoltage)
         {
-            TimeData.Add(time);
-            ThrustData.Add(thrust);
-            PressureData.Add(pressure);
-            RawThrustVoltages.Add(thrustVoltage);
-            RawPressureVoltages.Add(pressureVoltage);
+            lock (_syncLock)
+            {
+                TimeData.Add(time);
+                ThrustData.Add(thrust);
+                PressureData.Add(pressure);
+                RawThrustVoltages.Add(thrustVoltage);
+                RawPressureVoltages.Add(pressureVoltage);
 
-            _dataWriter?.WriteLine(JsonSerializer.Serialize(new DataPoint(time, thrust, pressure, thrustVoltage, pressureVoltage)));
-            _dataWriter?.Flush(); // Ensure data is written immediately
+                _dataWriter?.WriteLine(JsonSerializer.Serialize(new DataPoint(time, thrust, pressure, thrustVoltage, pressureVoltage)));
+            }
         }
 
         // Exports the collected data to final JSON format
@@ -103,17 +106,20 @@ namespace Project_FREAK.Controllers
         // Creates a temporary data file and initializes the writer
         public void StartRecording(string sessionFolder)
         {
-            StopRecording(); // Ensure any previous writer is closed
-            TimeData.Clear();
-            ThrustData.Clear();
-            PressureData.Clear();
-            RawThrustVoltages.Clear();
-            RawPressureVoltages.Clear();
-            _tempDataPath = Path.Combine(sessionFolder, $"temp_data_{Guid.NewGuid()}.jsonl");
-            _dataWriter = new StreamWriter(_tempDataPath, append: false)
+            lock (_syncLock)
             {
-                AutoFlush = true // Ensure automatic flushing
-            };
+                StopRecording(); // Ensure any previous writer is closed
+                TimeData.Clear();
+                ThrustData.Clear();
+                PressureData.Clear();
+                RawThrustVoltages.Clear();
+                RawPressureVoltages.Clear();
+                _tempDataPath = Path.Combine(sessionFolder, $"temp_data_{Guid.NewGuid()}.jsonl");
+                _dataWriter = new StreamWriter(_tempDataPath, append: false)
+                {
+                    AutoFlush = true // Ensure automatic flushing
+                };
+            }
         }
 
         public void Dispose()
@@ -123,9 +129,12 @@ namespace Project_FREAK.Controllers
 
         public void StopRecording()
         {
-            _dataWriter?.Flush();
-            _dataWriter?.Dispose();
-            _dataWriter = null;
+            lock (_syncLock)
+            {
+                _dataWriter?.Flush();
+                _dataWriter?.Dispose();
+                _dataWriter = null;
+            }
         }
     }
 }

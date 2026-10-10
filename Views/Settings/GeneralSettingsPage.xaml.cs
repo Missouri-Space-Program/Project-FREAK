@@ -152,6 +152,7 @@ public partial class GeneralSettingsPage : Page
             sample = (_latestBridgeVoltage, _latestExcitationVoltage);
         }
 
+        // Keep the known mass paired with the live bridge and excitation readings captured together.
         var point = (weightKg, sample.bridgeVoltage, sample.excitationVoltage);
         if (isFirstPoint)
         {
@@ -183,6 +184,7 @@ public partial class GeneralSettingsPage : Page
 
         try
         {
+            // Store the fitted coefficients and source samples as pending settings; Apply or Save activates them.
             _calculatedCalibration = SensorCalibration.FitLoadCell(
                 _point1.Value.weightKg,
                 _point1.Value.bridgeVoltage,

@@ -42,6 +42,16 @@ namespace Project_FREAK.Tests
         }
 
         [Fact]
+        public void AddDataPoints_DoesNotThrow()
+        {
+            RunInSta(() =>
+            {
+                var gm = new GraphManager(new WpfPlot(), new WpfPlot());
+                gm.AddDataPoints(new[] { (0.0, 1.0, 2.0), (0.1, 1.5, 2.5) });
+            });
+        }
+
+        [Fact]
         public void ClearGraphs_DoesNotThrow()
         {
             RunInSta(() =>

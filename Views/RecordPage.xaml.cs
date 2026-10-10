@@ -116,24 +116,31 @@ namespace Project_FREAK.Views
 
             var elapsedTime = _stopwatch.Elapsed.TotalSeconds; // Get elapsed time
 
-            // Store data point in queue incase we don't update the graph this frame
+            // Immediately record data points without waiting for graph intervals or blocking UI thread
+            if (_isRecording)
+            {
+                _dataRecorder.AddDataPoint(elapsedTime, thrust, pressure, thrustVoltage, pressureVoltage);
+            }
+
+            // Store data point in queue for graph update
             _dataQueue.Enqueue((elapsedTime, thrust, pressure, thrustVoltage, pressureVoltage));
 
-            // Only update graphs at specified frame rate
+            // Only update graphs at specified frame rate using non-blocking dispatch and batching
             if (_graphUpdateStopwatch.ElapsedMilliseconds >= 1000 / graphFPS)
             {
-                Dispatcher.Invoke(() =>
+                _graphUpdateStopwatch.Restart();
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                 {
+                    var points = new List<(double time, double thrust, double pressure)>();
                     while (_dataQueue.TryDequeue(out var dataPoint))
                     {
-                        if (_isRecording)
-                        {
-                            _dataRecorder.AddDataPoint(dataPoint.time, dataPoint.thrust, dataPoint.pressure, dataPoint.thrustVoltage, dataPoint.pressureVoltage); // Add data point to recorder
-                        }
-                        _graphManager.AddDataPoint(dataPoint.time, dataPoint.thrust, dataPoint.pressure); // Add data point to graphs
+                        points.Add((dataPoint.time, dataPoint.thrust, dataPoint.pressure));
                     }
-                    _graphUpdateStopwatch.Restart(); // Restart the stopwatch for graph updates
-                });
+                    if (points.Count > 0)
+                    {
+                        _graphManager.AddDataPoints(points);
+                    }
+                }));
             }
         }
 
@@ -179,10 +186,10 @@ namespace Project_FREAK.Views
             }
             else if (_isRecording)
             {
+                _isRecording = false;
                 if (_isVideoRecording)
                     _webcamManager.StopRecording();
                 _isVideoRecording = false;
-                _isRecording = false;
                 StartTestTextBlock.Text = "Start";
                 StartButton.Background = Brushes.Green;
                 SaveDataButton.IsEnabled = false;

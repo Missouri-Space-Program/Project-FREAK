@@ -1,5 +1,6 @@
 namespace Project_FREAK.Controllers;
 
+// Two-point calibration coefficients mapping bridge signal to load in kilograms.
 public readonly record struct LoadCellCalibration(double Slope, double Offset, double ExcitationReferenceVoltage);
 
 public static class SensorCalibration
@@ -24,6 +25,7 @@ public static class SensorCalibration
             throw new ArgumentException("The two calibration loads must have different known masses.");
         }
 
+        // Normalize both samples to their mean excitation before fitting one line.
         double excitationReference = (excitationVoltage1 + excitationVoltage2) / 2;
         double normalizedVoltage1 = bridgeVoltage1 * excitationReference / excitationVoltage1;
         double normalizedVoltage2 = bridgeVoltage2 * excitationReference / excitationVoltage2;
@@ -45,6 +47,7 @@ public static class SensorCalibration
             throw new ArgumentOutOfRangeException(nameof(excitationVoltage), "A finite bridge voltage and positive excitation voltage are required.");
         }
 
+        // Apply the fitted line, then scale its result by live excitation relative to the reference.
         return (calibration.Slope * bridgeVoltage + calibration.Offset) * excitationVoltage / calibration.ExcitationReferenceVoltage;
     }
 
@@ -56,6 +59,7 @@ public static class SensorCalibration
             throw new ArgumentOutOfRangeException(nameof(fullScaleVoltage), "Pressure calibration requires finite values, a higher full-scale voltage, and a positive full-scale value.");
         }
 
+        // Linearly map the sensor's zero-to-full-scale voltage span to its pressure range.
         return (voltage - zeroVoltage) * fullScaleValue / (fullScaleVoltage - zeroVoltage);
     }
 }

@@ -1,8 +1,11 @@
 ﻿using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
@@ -21,6 +24,11 @@ namespace Project_FREAK.Controllers
         public event Action<string>? CameraError; // Event triggered when a camera error occurs
 
         private VideoWriter? _videoWriter;
+        private BlockingCollection<Mat>? _recordingQueue;
+        private Task? _recordingTask;
+        private readonly object _recordingLock = new();
+        private int _isRenderingFrame = 0;
+
         public int FrameWidth { get; private set; }
         public int FrameHeight { get; private set; }
         public double Fps { get; private set; }
@@ -38,13 +46,35 @@ namespace Project_FREAK.Controllers
                 await Task.Run(() =>
                 {
                     if (demoMode)
-                        _capture = new VideoCapture(0);
+                    {
+                        // Use DirectShow on Windows for lowest capture latency
+                        _capture = new VideoCapture(0, VideoCaptureAPIs.DSHOW);
+                        if (!_capture.IsOpened())
+                        {
+                            _capture = new VideoCapture(0);
+                        }
+                    }
                     else if (!string.IsNullOrEmpty(rtspUrl))
-                        _capture = new VideoCapture(rtspUrl);
+                    {
+                        // Configure low-latency RTSP flags for FFmpeg
+                        Environment.SetEnvironmentVariable("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay|max_delay;500000");
+                        _capture = new VideoCapture(rtspUrl, VideoCaptureAPIs.FFMPEG);
+                        if (!_capture.IsOpened())
+                        {
+                            _capture = new VideoCapture(rtspUrl);
+                        }
+                    }
                 });
 
                 if (_capture?.IsOpened() == true)
                 {
+                    try
+                    {
+                        // Request minimum driver frame buffer to prevent latency accumulation
+                        _capture.Set(VideoCaptureProperties.BufferSize, 1);
+                    }
+                    catch { }
+
                     FrameWidth = (int)_capture.Get(VideoCaptureProperties.FrameWidth);
                     FrameHeight = (int)_capture.Get(VideoCaptureProperties.FrameHeight);
                     Fps = _capture.Get(VideoCaptureProperties.Fps);
@@ -73,76 +103,166 @@ namespace Project_FREAK.Controllers
         private void StartCaptureLoop()
         {
             _cts = new CancellationTokenSource();
-            Task.Run(async () =>
-            {
-                var targetFrameTime = TimeSpan.FromSeconds(1 / Fps);
-                var sw = new Stopwatch();
+            var token = _cts.Token;
 
-                while (!_cts!.IsCancellationRequested && _capture?.IsOpened() == true)
+            Task.Run(() =>
+            {
+                while (!token.IsCancellationRequested && _capture?.IsOpened() == true)
                 {
-                    sw.Restart();
                     try
                     {
                         using var frame = new Mat();
-                        if (!_capture.Read(frame) || frame.Empty()) continue;
+                        if (!_capture.Read(frame) || frame.Empty())
+                        {
+                            Thread.Sleep(10);
+                            continue;
+                        }
 
-                        _videoWriter?.Write(frame);
+                        // Asynchronously record video without blocking live capture
+                        var queue = _recordingQueue;
+                        if (queue != null && !queue.IsAddingCompleted)
+                        {
+                            var frameClone = frame.Clone();
+                            if (!queue.TryAdd(frameClone))
+                            {
+                                // Drop frame if queue is backlogged to protect system memory
+                                frameClone.Dispose();
+                            }
+                        }
 
-                        // Convert Mat to WPF's WriteableBitmap directly
-                        var bitmap = frame.ToWriteableBitmap();
-                        bitmap.Freeze();
+                        // Non-blocking UI preview gate: drop preview frame if UI is still rendering
+                        if (Interlocked.CompareExchange(ref _isRenderingFrame, 1, 0) == 0)
+                        {
+                            try
+                            {
+                                var bitmap = frame.ToWriteableBitmap();
+                                bitmap.Freeze();
 
-                        _dispatcher.Invoke(() => FrameReceived?.Invoke(bitmap));
-
-                        var processingTime = sw.Elapsed;
-                        var delay = targetFrameTime - processingTime;
-                        if (delay > TimeSpan.Zero) await Task.Delay(delay);
+                                _dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+                                {
+                                    try
+                                    {
+                                        FrameReceived?.Invoke(bitmap);
+                                    }
+                                    finally
+                                    {
+                                        Interlocked.Exchange(ref _isRenderingFrame, 0);
+                                    }
+                                }));
+                            }
+                            catch
+                            {
+                                Interlocked.Exchange(ref _isRenderingFrame, 0);
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
                         CameraError?.Invoke($"Frame error: {ex.Message}");
                     }
                 }
-            }, _cts.Token);
+            }, token);
         }
 
         // Starts recording video to the specified file path
         public void StartRecording(string filePath)
         {
-            if (_capture == null || !_capture.IsOpened())
-                throw new InvalidOperationException("Camera not initialized.");
-
-            int fourcc = VideoWriter.FourCC('a', 'v', 'c', '1');    // Default to AVC codec
-            if (!IsFourccSupported(fourcc))
+            lock (_recordingLock)
             {
-                fourcc = VideoWriter.FourCC('m', 'p', '4', 'v');    // Fallback to MP4V codec
-            }
-            _videoWriter = new VideoWriter(     // Initialize the video writer
-                filePath,
-                fourcc,
-                Fps,
-                new OpenCvSharp.Size(FrameWidth, FrameHeight)
-            );
+                if (_capture == null || !_capture.IsOpened())
+                    throw new InvalidOperationException("Camera not initialized.");
 
-            if (!_videoWriter.IsOpened())
-                throw new Exception("Failed to initialize video writer.");
+                StopRecordingInternal();
+
+                int fourcc = VideoWriter.FourCC('a', 'v', 'c', '1');    // Default to AVC codec
+                if (!IsFourccSupported(fourcc))
+                {
+                    fourcc = VideoWriter.FourCC('m', 'p', '4', 'v');    // Fallback to MP4V codec
+                }
+
+                _videoWriter = new VideoWriter(     // Initialize the video writer
+                    filePath,
+                    fourcc,
+                    Fps,
+                    new OpenCvSharp.Size(FrameWidth, FrameHeight)
+                );
+
+                if (!_videoWriter.IsOpened())
+                    throw new Exception("Failed to initialize video writer.");
+
+                _recordingQueue = new BlockingCollection<Mat>(boundedCapacity: 120);
+                var activeQueue = _recordingQueue;
+                var activeWriter = _videoWriter;
+
+                // Dedicated background worker for video encoding/file writing
+                _recordingTask = Task.Run(() =>
+                {
+                    try
+                    {
+                        foreach (var frame in activeQueue.GetConsumingEnumerable())
+                        {
+                            try
+                            {
+                                activeWriter.Write(frame);
+                            }
+                            finally
+                            {
+                                frame.Dispose();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        CameraError?.Invoke($"Recording error: {ex.Message}");
+                    }
+                });
+            }
         }
 
         // Checks if the specified FourCC codec is supported
         private static bool IsFourccSupported(int fourcc)
         {
+            const string testFile = "test_codec.mp4";
             try
             {
-                using var testWriter = new VideoWriter("test.mp4", fourcc, 30, new OpenCvSharp.Size(640, 480));
-                return testWriter.IsOpened();
+                using (var testWriter = new VideoWriter(testFile, fourcc, 30, new OpenCvSharp.Size(640, 480)))
+                {
+                    return testWriter.IsOpened();
+                }
             }
             catch { return false; }
+            finally
+            {
+                try { if (File.Exists(testFile)) File.Delete(testFile); } catch { }
+            }
         }
 
         // Stops the video recording
         public void StopRecording()
         {
+            lock (_recordingLock)
+            {
+                StopRecordingInternal();
+            }
+        }
+
+        private void StopRecordingInternal()
+        {
+            if (_recordingQueue != null)
+            {
+                _recordingQueue.CompleteAdding();
+                try
+                {
+                    _recordingTask?.Wait(5000);
+                }
+                catch { }
+                _recordingQueue.Dispose();
+                _recordingQueue = null;
+                _recordingTask = null;
+            }
+
             _videoWriter?.Release();
+            _videoWriter?.Dispose();
             _videoWriter = null;
         }
 
@@ -150,8 +270,9 @@ namespace Project_FREAK.Controllers
         public void Dispose()
         {
             _cts?.Cancel();
+            StopRecording();
             _capture?.Dispose();
-            _videoWriter?.Dispose();
+            _capture = null;
             GC.SuppressFinalize(this);
         }
     }

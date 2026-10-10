@@ -29,7 +29,7 @@
                             <Button DockPanel.Dock="Right" Content="Reconnect" Padding="14,5" Click="ReconnectButton_Click"/>
                             <TextBlock x:Name="DeviceStatusText" Text="Checking LabJack…" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </DockPanel>
-                        <TextBlock Text="If no LabJack is detected, simulated sensor readings are used automatically." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock Text="If no LabJack is detected, simulated sensor readings are used automatically. The live values show each sensor's input voltage and the corresponding converted load or pressure." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="180"/>
@@ -49,7 +49,7 @@
 
                 <GroupBox Header="Hardware channel assignments">
                     <StackPanel>
-                        <TextBlock Text="Choose the LabJack channels connected to each device. Current wiring is preselected by default." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock Text="AIN channels read analog sensor voltages; choose the channel physically wired to each sensor. Choose the DAC wired to the igniter output. AIN6 is reserved for automatic load-cell excitation-voltage feedback, and the pressure and load-cell signals must use different AIN channels." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="190"/>
@@ -68,24 +68,23 @@
                             <TextBlock Grid.Row="2" Text="Igniter output (DAC):" VerticalAlignment="Center" Margin="0,5"/>
                             <ComboBox x:Name="IgniterOutputChannelComboBox" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
                         </Grid>
-                        <TextBlock Text="AIN6 remains reserved for the load-cell excitation-voltage measurement. The pressure and load-cell signals must use different inputs." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,8,0,0"/>
                     </StackPanel>
                 </GroupBox>
 
                 <GroupBox Header="Review data source">
                     <StackPanel>
                         <CheckBox x:Name="UseRawDataForReviewCheckBox" Content="Recalculate review data from raw sensor voltages" IsChecked="{Binding UseRawDataForReview}" Foreground="White" FontSize="15"/>
-                        <TextBlock Text="When enabled, raw values are converted using the applied calibration below. When disabled, review uses the unitized thrust and pressure values already stored in each JSON file. Applying or saving this option refreshes the currently open review." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        <TextBlock Text="When enabled, review recalculates thrust and pressure from the raw voltages stored in the recording, using the currently applied calibration. When disabled, it uses the engineering-unit values already stored in the JSON file. Applying or saving this option refreshes the open review." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,8,0,0"/>
                     </StackPanel>
                 </GroupBox>
 
                 <TextBlock Text="Sensor calibration" FontSize="22" FontWeight="Bold" Margin="0,4,0,8"/>
-                <TextBlock Text="Calibrate the load cell with two known loads, then set the pressure transducer voltage range and engineering units." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <TextBlock Text="Use two distinct known loads applied steadily along the load cell's sensing axis. Enter their masses in kg and capture each while the load is settled; captured samples include both the bridge signal and excitation voltage. Raw bridge output varies with excitation, so the app reads excitation feedback on AIN6. Pressure scaling uses the sensor's zero and full-scale output voltages and rated pressure." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,12"/>
                 <TextBlock x:Name="SimulationNoticeText" Text="SIMULATION: no LabJack is detected. Live values are simulated and must not be used to calibrate hardware." Foreground="Orange" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,12"/>
 
                 <GroupBox Header="Load cell — two-point system calibration">
                     <StackPanel>
-                        <TextBlock Text="The calibration fits Load = Slope × Vmeas + Offset from two known loads and compensates for real-time excitation voltage." TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock Text="Each captured point pairs a known mass with the measured bridge signal and excitation voltage. The two points determine the load-cell scale and zero offset. Use masses or equivalent reference forces that load the cell in the same direction and setup as the motor test; a no-load point is valid if the other point applies a different known load." TextWrapping="Wrap" Margin="0,0,0,10"/>
                         <TextBlock x:Name="CalibrationLoadCellLiveText" Text="Waiting for live load-cell readings…" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -93,7 +92,7 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                <TextBlock Text="1. Place a known first load on the cell and capture a sample." TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <TextBlock Text="1. Enter the first known mass, apply it to the cell, let the reading settle, then capture." TextWrapping="Wrap" Margin="0,0,0,6"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                     <TextBlock Text="Known mass (kg):" VerticalAlignment="Center" Width="125"/>
                                     <TextBox x:Name="Point1WeightTextBox" Width="100"/>
@@ -102,7 +101,7 @@
                                 <TextBlock x:Name="Point1SampleText" Text="No sample captured." Margin="0,6,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Text="2. Change to a different known load and capture another sample." TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <TextBlock Text="2. Change to a different known mass, let the reading settle, then capture again." TextWrapping="Wrap" Margin="0,0,0,6"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                     <TextBlock Text="Known mass (kg):" VerticalAlignment="Center" Width="125"/>
                                     <TextBox x:Name="Point2WeightTextBox" Width="100"/>
@@ -121,7 +120,7 @@
 
                 <GroupBox Header="Pressure sensor — linear voltage scaling">
                     <StackPanel>
-                        <TextBlock Text="Set the voltage that represents zero pressure, the voltage at full scale, and the corresponding pressure value. Readings are interpolated linearly." TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock Text="Enter the sensor output voltage at zero pressure, its output voltage at full-scale pressure, and the pressure value at that full-scale point. The app linearly maps between those endpoints. Use the sensor datasheet or known pressure references; the defaults map 0.5–4.5 V to 0–1600 PSI." TextWrapping="Wrap" Margin="0,0,0,10"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="190"/>
@@ -146,11 +145,18 @@
             </StackPanel>
         </ScrollViewer>
         <Border Grid.Row="1" Background="#2D2D30" Padding="16,10">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock x:Name="SettingsStatusText" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="#BDBDBD"/>
-                <Button Content="Apply" Width="100" Height="32" Margin="0,0,10,0" Click="ApplyButton_Click"/>
-                <Button Content="Save" Width="100" Height="32" Click="SaveButton_Click"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Apply uses the settings for this session. Save also stores them for future sessions." Foreground="#BDBDBD" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock x:Name="SettingsStatusText" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="#BDBDBD"/>
+                    <Button Content="Apply" Width="100" Height="32" Margin="0,0,10,0" Click="ApplyButton_Click"/>
+                    <Button Content="Save" Width="100" Height="32" Click="SaveButton_Click"/>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </Page>
