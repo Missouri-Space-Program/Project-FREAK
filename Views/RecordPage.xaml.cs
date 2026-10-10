@@ -21,10 +21,9 @@ namespace Project_FREAK.Views
         private readonly Stopwatch _stopwatch = new(); // Stopwatch to track elapsed time
         private readonly Stopwatch _graphUpdateStopwatch = new(); // Stopwatch to control graph update rate
         private readonly ConcurrentQueue<(double time, double thrust, double pressure, double thrustVoltage, double pressureVoltage)> _dataQueue = new(); // Queue to store data points
-        private SensorCheckWindow? _sensorCheckWindow; // Window for sensor check
-
         private bool _isSaving = false;
         private bool _isRecording = false; // Flag to indicate if recording is in progress
+        private bool _isVideoRecording;
         private const int graphFPS = 30;
         private string? _currentSessionFolder;
         private string? _currentVideoPath;
@@ -62,6 +61,11 @@ namespace Project_FREAK.Views
         {
             _graphManager = new GraphManager(ThrustGraph, PressureGraph);
             _labjackManager = LabJackManager.Instance; // Ensure LabJackManager is thread-safe
+            if (_labjackManager.IsDemo())
+            {
+                ControlPanelTitle.Text = "Control Panel — DEMO SIMULATION";
+                ControlPanelTitle.Foreground = Brushes.Orange;
+            }
             _webcamManager = new WebcamManager(Dispatcher);
             _dataRecorder = new DataRecorder();
             _countdownService = new CountdownService(Dispatcher);
@@ -86,7 +90,7 @@ namespace Project_FREAK.Views
             {
                 LoadingTextBlock.Visibility = Visibility.Visible; // Show loading text
                 var settings = ((App)Application.Current).SettingsManager.AppliedSettings;
-                await _webcamManager.InitializeAsync(settings.DemoModeEnabled, settings.RtspUrl);
+                await _webcamManager.InitializeAsync(_labjackManager.IsDemo(), settings.RtspUrl);
                 LoadingTextBlock.Visibility = Visibility.Collapsed; // Hide only on success
             }
             catch (Exception ex)
@@ -146,7 +150,7 @@ namespace Project_FREAK.Views
             {
                 StartTestTextBlock.Text = "Igniting Motor!"; // Update text to indicate motor ignition
                 _labjackManager.IgniteMotor(); // Ignite the motor
-                StartVideoRecording(); // Start recording after ignition
+                StartTestRecording(); // Start recording after ignition
             });
         }
 
@@ -175,10 +179,13 @@ namespace Project_FREAK.Views
             }
             else if (_isRecording)
             {
-                _webcamManager.StopRecording();
+                if (_isVideoRecording)
+                    _webcamManager.StopRecording();
+                _isVideoRecording = false;
                 _isRecording = false;
                 StartTestTextBlock.Text = "Start";
                 StartButton.Background = Brushes.Green;
+                SaveDataButton.IsEnabled = false;
 
                 // Stop data recorder before saving
                 _dataRecorder.StopRecording();
@@ -201,9 +208,9 @@ namespace Project_FREAK.Views
                 var jsonFileName = $"data_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
                 var jsonPath = Path.Combine(_currentSessionFolder!, jsonFileName);
 
-                _dataRecorder.ExportToJson(jsonPath);
+                _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath());
 
-                MessageBox.Show($"Data and video saved in:\n{_currentSessionFolder}", "Success",
+                MessageBox.Show(GetSaveSummary(), "Success",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -233,9 +240,9 @@ namespace Project_FREAK.Views
                 var jsonFileName = $"data_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
                 var jsonPath = Path.Combine(_currentSessionFolder, jsonFileName);
 
-                _dataRecorder.ExportToJson(jsonPath);
+                _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath());
 
-                MessageBox.Show($"Data and video saved in:\n{_currentSessionFolder}", "Success",
+                MessageBox.Show(GetSaveSummary(), "Success",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -278,7 +285,7 @@ namespace Project_FREAK.Views
 
                 // Reinitialize webcam with new settings
                 await _webcamManager.ReinitializeAsync(
-                    ((App)Application.Current).SettingsManager.AppliedSettings.DemoModeEnabled,
+                    _labjackManager.IsDemo(),
                     ((App)Application.Current).SettingsManager.AppliedSettings.RtspUrl
                 );
 
@@ -296,7 +303,7 @@ namespace Project_FREAK.Views
             }
         }
 
-        private void StartVideoRecording()
+        private void StartTestRecording()
         {
             try
             {
@@ -310,21 +317,47 @@ namespace Project_FREAK.Views
                 Directory.CreateDirectory(_currentSessionFolder);
 
                 _dataRecorder.StartRecording(_currentSessionFolder);
-
-                // Generate filenames
-                var videoFileName = $"test_{timestamp}.mp4";
-                _currentVideoPath = Path.Combine(_currentSessionFolder, videoFileName);
-
-                _webcamManager.StartRecording(_currentVideoPath);
                 _isRecording = true;
+                SaveDataButton.IsEnabled = true;
                 StartTestTextBlock.Text = "Stop Recording";
                 StartButton.Background = Brushes.Red;
+
+                var videoFileName = $"test_{timestamp}.mp4";
+                _currentVideoPath = Path.Combine(_currentSessionFolder, videoFileName);
+                try
+                {
+                    _webcamManager.StartRecording(_currentVideoPath);
+                    _isVideoRecording = true;
+                }
+                catch (Exception exception)
+                {
+                    LoadingTextBlock.Text = $"Camera unavailable; sensor data is still recording. {exception.Message}";
+                    LoadingTextBlock.Visibility = Visibility.Visible;
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error starting recording: {ex.Message}", "Error",
+                _isRecording = false;
+                SaveDataButton.IsEnabled = false;
+                _dataRecorder.StopRecording();
+                MessageBox.Show($"Error starting sensor data recording: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private string GetSaveSummary()
+        {
+            bool videoSaved = _currentVideoPath != null && File.Exists(_currentVideoPath) && new FileInfo(_currentVideoPath).Length > 0;
+            return videoSaved
+                ? $"Sensor data and video saved in:\n{_currentSessionFolder}"
+                : $"Sensor data saved in:\n{_currentSessionFolder}\nNo camera video was recorded.";
+        }
+
+        private string? GetRelativeVideoPath()
+        {
+            return _currentVideoPath != null && File.Exists(_currentVideoPath) && new FileInfo(_currentVideoPath).Length > 0
+                ? Path.GetFileName(_currentVideoPath)
+                : null;
         }
 
         

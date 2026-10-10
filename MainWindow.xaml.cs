@@ -16,8 +16,6 @@ namespace Project_FREAK
 {
     public partial class MainWindow : Window
     {
-        private SensorCheckWindow? _sensorCheckWindow;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -32,14 +30,7 @@ namespace Project_FREAK
             await Task.Delay(10); // Small delay to allow rendering
             MainFrame.UpdateLayout();
 
-            // Navigate to RecordPage without blocking
-            await Task.Run(() =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    MainFrame.Navigate(new RecordPage());
-                });
-            });
+            MainFrame.Navigate(new ModeSelectionPage());
         }
 
         public void NavigateToPage(Page page)
@@ -61,18 +52,10 @@ namespace Project_FREAK
             NavigateToPage(new RecordPage());
         }
 
-        private void SensorCheckMenuItem_Click(object sender, RoutedEventArgs e)
+        private void ReviewDataMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            if (_sensorCheckWindow == null)
-            {
-                _sensorCheckWindow = new SensorCheckWindow();
-                _sensorCheckWindow.Closed += (s, args) => _sensorCheckWindow = null;
-                _sensorCheckWindow.Show();
-            }
-            else
-            {
-                _sensorCheckWindow.Activate();
-            }
+            NavigateToPage(new ReviewDataPage());
         }
+
     }
 }

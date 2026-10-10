@@ -81,7 +81,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="Control Panel" 
+                <TextBlock x:Name="ControlPanelTitle" Text="Control Panel" 
                            FontSize="20"
                            Foreground="White" 
                            TextAlignment="Center" 
@@ -93,6 +93,7 @@
                       VerticalAlignment="Stretch"
                       Margin="0">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
@@ -126,6 +127,11 @@
                             <TextBlock x:Name="ArmTextBlock" Text="Arm" Foreground="White" Margin="2"/>
                         </Viewbox>
                     </Button>
+
+                    <Button x:Name="SaveDataButton" Grid.Row="1" Grid.ColumnSpan="2"
+                            Content="Save Data" IsEnabled="False"
+                            Background="#555" Foreground="White" Margin="1"
+                            Click="SaveButton_Click"/>
                 </Grid>
             </Grid>
         </Border>

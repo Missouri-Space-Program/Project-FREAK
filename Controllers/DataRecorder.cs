@@ -29,43 +29,49 @@ namespace Project_FREAK.Controllers
         public void AddDataPoint(double time, double thrust, double pressure,
                                double thrustVoltage, double pressureVoltage)
         {
-            var dataPoint = new
-            {
-                time,
-                thrust,
-                pressure,
-                thrustVoltage,
-                pressureVoltage
-            };
+            TimeData.Add(time);
+            ThrustData.Add(thrust);
+            PressureData.Add(pressure);
+            RawThrustVoltages.Add(thrustVoltage);
+            RawPressureVoltages.Add(pressureVoltage);
 
-            _dataWriter?.WriteLine(JsonSerializer.Serialize(dataPoint));
+            _dataWriter?.WriteLine(JsonSerializer.Serialize(new DataPoint(time, thrust, pressure, thrustVoltage, pressureVoltage)));
             _dataWriter?.Flush(); // Ensure data is written immediately
         }
 
         // Exports the collected data to final JSON format
-        public void ExportToJson(string finalPath)
+        public void ExportToJson(string finalPath, string? videoPath = null)
         {
             try
             {
-                if (_tempDataPath == null || !File.Exists(_tempDataPath)) return;
-
                 // Add retry logic for file access
                 const int maxRetries = 5;
                 for (int i = 0; i < maxRetries; i++)
                 {
                     try
                     {
-                        // Read and process data
-                        var lines = File.ReadAllLines(_tempDataPath);
+                        var dataPoints = _tempDataPath != null && File.Exists(_tempDataPath)
+                            ? File.ReadAllLines(_tempDataPath)
+                                .Select(line => JsonSerializer.Deserialize<DataPoint>(line)!)
+                                .ToList()
+                            : Enumerable.Range(0, TimeData.Count)
+                                .Select(index => new DataPoint(
+                                    TimeData[index],
+                                    ThrustData[index],
+                                    PressureData[index],
+                                    RawThrustVoltages[index],
+                                    RawPressureVoltages[index]))
+                                .ToList();
 
                         // Deserialize and organize data
                         var data = new
                         {
-                            time_values_seconds = lines.Select(l => JsonSerializer.Deserialize<DataPoint>(l).time).ToList(),
-                            thrust_values_N = lines.Select(l => JsonSerializer.Deserialize<DataPoint>(l).thrust).ToList(),
-                            pressure_values_PSI = lines.Select(l => JsonSerializer.Deserialize<DataPoint>(l).pressure).ToList(),
-                            load_cell_voltages_mv = lines.Select(l => JsonSerializer.Deserialize<DataPoint>(l).thrustVoltage).ToList(),
-                            pressure_transducer_voltages_v = lines.Select(l => JsonSerializer.Deserialize<DataPoint>(l).pressureVoltage).ToList()
+                            time_values_seconds = dataPoints.Select(point => point.time).ToList(),
+                            thrust_values_N = dataPoints.Select(point => point.thrust).ToList(),
+                            pressure_values_PSI = dataPoints.Select(point => point.pressure).ToList(),
+                            load_cell_voltages_mv = dataPoints.Select(point => point.thrustVoltage).ToList(),
+                            pressure_transducer_voltages_v = dataPoints.Select(point => point.pressureVoltage).ToList(),
+                            video_path = videoPath
                         };
 
                         // Write final JSON
@@ -82,7 +88,15 @@ namespace Project_FREAK.Controllers
             }
             finally
             {
-                try { File.Delete(_tempDataPath); } catch { /* Ignore cleanup errors */ }
+                if (_dataWriter == null && _tempDataPath != null)
+                {
+                    try
+                    {
+                        File.Delete(_tempDataPath);
+                        _tempDataPath = null;
+                    }
+                    catch { /* Ignore cleanup errors */ }
+                }
             }
         }
 
@@ -90,6 +104,11 @@ namespace Project_FREAK.Controllers
         public void StartRecording(string sessionFolder)
         {
             StopRecording(); // Ensure any previous writer is closed
+            TimeData.Clear();
+            ThrustData.Clear();
+            PressureData.Clear();
+            RawThrustVoltages.Clear();
+            RawPressureVoltages.Clear();
             _tempDataPath = Path.Combine(sessionFolder, $"temp_data_{Guid.NewGuid()}.jsonl");
             _dataWriter = new StreamWriter(_tempDataPath, append: false)
             {
@@ -99,7 +118,7 @@ namespace Project_FREAK.Controllers
 
         public void Dispose()
         {
-            _dataWriter?.Dispose();
+            StopRecording();
         }
 
         public void StopRecording()

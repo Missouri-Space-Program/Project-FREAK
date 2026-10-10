@@ -28,11 +28,12 @@ namespace Project_FREAK.Tests.Tests
             dr.AddDataPoint(0.5, 1.5, 2.5, 3.5, 4.5);
 
             var tmp = Path.GetTempFileName();
-            dr.ExportToJson(tmp);
+            dr.ExportToJson(tmp, "burn.mp4");
 
             using var doc = JsonDocument.Parse(File.ReadAllText(tmp));
             Assert.True(doc.RootElement.TryGetProperty("time_values_seconds", out _));
             Assert.True(doc.RootElement.TryGetProperty("thrust_values_N", out _));
+            Assert.Equal("burn.mp4", doc.RootElement.GetProperty("video_path").GetString());
         }
     }
 }

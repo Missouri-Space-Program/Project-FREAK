@@ -28,6 +28,9 @@ namespace Project_FREAK.Tests
             var mgr = new SettingsManager();
             Assert.False(mgr.AppliedSettings.DemoModeEnabled);
             Assert.StartsWith("rtsp://admin", mgr.AppliedSettings.RtspUrl);
+            Assert.Equal("AIN0", mgr.AppliedSettings.PressureInputChannel);
+            Assert.Equal("AIN5", mgr.AppliedSettings.LoadCellInputChannel);
+            Assert.Equal("DAC0", mgr.AppliedSettings.IgniterOutputChannel);
         }
 
         [Fact]
@@ -37,7 +40,10 @@ namespace Project_FREAK.Tests
             var exp = new SettingsManager.SettingsData
             {
                 DemoModeEnabled = true,
-                RtspUrl = "rtsp://test"
+                RtspUrl = "rtsp://test",
+                PressureInputChannel = "AIN2",
+                LoadCellInputChannel = "AIN4",
+                IgniterOutputChannel = "DAC1"
             };
             File.WriteAllText(
                 Path.Combine(cfg, "saved_settings.json"),
@@ -47,6 +53,25 @@ namespace Project_FREAK.Tests
             var mgr = new SettingsManager();
             Assert.True(mgr.AppliedSettings.DemoModeEnabled);
             Assert.Equal("rtsp://test", mgr.AppliedSettings.RtspUrl);
+            Assert.Equal("AIN2", mgr.AppliedSettings.PressureInputChannel);
+            Assert.Equal("AIN4", mgr.AppliedSettings.LoadCellInputChannel);
+            Assert.Equal("DAC1", mgr.AppliedSettings.IgniterOutputChannel);
+        }
+
+        [Fact]
+        public void UpdateAppliedSettings_InvalidChannelsFallBackToCurrentWiringDefaults()
+        {
+            var mgr = new SettingsManager();
+            mgr.UpdateAppliedSettings(new SettingsManager.SettingsData
+            {
+                PressureInputChannel = "AIN99",
+                LoadCellInputChannel = "not-an-input",
+                IgniterOutputChannel = "AIN3"
+            });
+
+            Assert.Equal("AIN0", mgr.AppliedSettings.PressureInputChannel);
+            Assert.Equal("AIN5", mgr.AppliedSettings.LoadCellInputChannel);
+            Assert.Equal("DAC0", mgr.AppliedSettings.IgniterOutputChannel);
         }
 
         [Fact]
@@ -60,7 +85,10 @@ namespace Project_FREAK.Tests
             var ns = new SettingsManager.SettingsData
             {
                 DemoModeEnabled = true,
-                RtspUrl = "rtsp://new"
+                RtspUrl = "rtsp://new",
+                PressureInputChannel = "AIN2",
+                LoadCellInputChannel = "AIN4",
+                IgniterOutputChannel = "DAC1"
             };
             mgr.UpdateAppliedSettings(ns);
             Assert.True(fired);
@@ -69,12 +97,18 @@ namespace Project_FREAK.Tests
                 File.ReadAllText(Path.Combine(cfg, "applied_settings.json"))
             )!;
             Assert.True(applied.DemoModeEnabled);
+            Assert.Equal("AIN2", applied.PressureInputChannel);
+            Assert.Equal("AIN4", applied.LoadCellInputChannel);
+            Assert.Equal("DAC1", applied.IgniterOutputChannel);
 
             mgr.SaveAppliedSettingsToDisk();
             var saved = JsonSerializer.Deserialize<SettingsManager.SettingsData>(
                 File.ReadAllText(Path.Combine(cfg, "saved_settings.json"))
             )!;
             Assert.Equal("rtsp://new", saved.RtspUrl);
+            Assert.Equal("AIN2", saved.PressureInputChannel);
+            Assert.Equal("AIN4", saved.LoadCellInputChannel);
+            Assert.Equal("DAC1", saved.IgniterOutputChannel);
         }
     }
 }

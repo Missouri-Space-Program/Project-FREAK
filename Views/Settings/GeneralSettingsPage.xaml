@@ -1,53 +1,156 @@
-﻿<Page x:Class="Project_FREAK.Views.Settings.GeneralSettingsPage"
+<Page x:Class="Project_FREAK.Views.Settings.GeneralSettingsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Title="General Settings"
+      Title="Settings"
       Background="#1E1E1E">
-
-    <Grid Margin="20">
+    <Page.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
+    </Page.Resources>
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24">
+                <TextBlock Text="Settings" FontSize="26" FontWeight="Bold" Margin="0,0,0,6"/>
+                <TextBlock Text="Configure hardware connections, data review, and sensor calibration in one place." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,18"/>
 
-        <!-- Header -->
-        <TextBlock Text="General Settings" 
-                   Foreground="White" 
-                   FontSize="24" 
-                   FontWeight="Bold"
-                   Grid.Row="0"/>
+                <GroupBox Header="LabJack connection and live sensors">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,10">
+                            <Button DockPanel.Dock="Right" Content="Reconnect" Padding="14,5" Click="ReconnectButton_Click"/>
+                            <TextBlock x:Name="DeviceStatusText" Text="Checking LabJack…" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <TextBlock Text="If no LabJack is detected, simulated sensor readings are used automatically." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Load-cell signal:" FontWeight="SemiBold" Margin="0,4"/>
+                            <TextBlock x:Name="LoadCellLiveText" Grid.Row="0" Grid.Column="1" Text="Waiting for sensor readings…" Margin="0,4"/>
+                            <TextBlock Grid.Row="1" Text="Pressure signal:" FontWeight="SemiBold" Margin="0,4"/>
+                            <TextBlock x:Name="PressureLiveText" Grid.Row="1" Grid.Column="1" Text="Waiting for sensor readings…" Margin="0,4"/>
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
 
-        <!-- Settings Content -->
-        <StackPanel Grid.Row="1" Margin="0,20,0,0">
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                <TextBlock Text="Demo Mode:" 
-                           Foreground="White" 
-                           Width="150"
-                           VerticalAlignment="Center"/>
-                <CheckBox x:Name="DemoModeCheckBox"
-                          VerticalAlignment="Center"
-                          IsChecked="{Binding DemoModeEnabled}"/>
+                <GroupBox Header="Hardware channel assignments">
+                    <StackPanel>
+                        <TextBlock Text="Choose the LabJack channels connected to each device. Current wiring is preselected by default." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="190"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Pressure sensor input (AIN):" VerticalAlignment="Center" Margin="0,5"/>
+                            <ComboBox x:Name="PressureInputChannelComboBox" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+                            <TextBlock Grid.Row="1" Text="Load-cell input (AIN):" VerticalAlignment="Center" Margin="0,5"/>
+                            <ComboBox x:Name="LoadCellInputChannelComboBox" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                            <TextBlock Grid.Row="2" Text="Igniter output (DAC):" VerticalAlignment="Center" Margin="0,5"/>
+                            <ComboBox x:Name="IgniterOutputChannelComboBox" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+                        </Grid>
+                        <TextBlock Text="AIN6 remains reserved for the load-cell excitation-voltage measurement. The pressure and load-cell signals must use different inputs." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Review data source">
+                    <StackPanel>
+                        <CheckBox x:Name="UseRawDataForReviewCheckBox" Content="Recalculate review data from raw sensor voltages" IsChecked="{Binding UseRawDataForReview}" Foreground="White" FontSize="15"/>
+                        <TextBlock Text="When enabled, raw values are converted using the applied calibration below. When disabled, review uses the unitized thrust and pressure values already stored in each JSON file. Applying or saving this option refreshes the currently open review." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <TextBlock Text="Sensor calibration" FontSize="22" FontWeight="Bold" Margin="0,4,0,8"/>
+                <TextBlock Text="Calibrate the load cell with two known loads, then set the pressure transducer voltage range and engineering units." Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <TextBlock x:Name="SimulationNoticeText" Text="SIMULATION: no LabJack is detected. Live values are simulated and must not be used to calibrate hardware." Foreground="Orange" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,12"/>
+
+                <GroupBox Header="Load cell — two-point system calibration">
+                    <StackPanel>
+                        <TextBlock Text="The calibration fits Load = Slope × Vmeas + Offset from two known loads and compensates for real-time excitation voltage." TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="CalibrationLoadCellLiveText" Text="Waiting for live load-cell readings…" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                <TextBlock Text="1. Place a known first load on the cell and capture a sample." TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Known mass (kg):" VerticalAlignment="Center" Width="125"/>
+                                    <TextBox x:Name="Point1WeightTextBox" Width="100"/>
+                                </StackPanel>
+                                <Button Content="Capture first load" Width="150" HorizontalAlignment="Left" Click="CapturePoint1_Click"/>
+                                <TextBlock x:Name="Point1SampleText" Text="No sample captured." Margin="0,6,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                <TextBlock Text="2. Change to a different known load and capture another sample." TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Known mass (kg):" VerticalAlignment="Center" Width="125"/>
+                                    <TextBox x:Name="Point2WeightTextBox" Width="100"/>
+                                </StackPanel>
+                                <Button Content="Capture second load" Width="150" HorizontalAlignment="Left" Click="CapturePoint2_Click"/>
+                                <TextBlock x:Name="Point2SampleText" Text="No sample captured." Margin="0,6,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <Button Content="Calculate calibration" Padding="10,5" Click="CalculateLoadCellCalibration_Click"/>
+                            <TextBlock x:Name="LoadCellCalibrationStatus" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <TextBlock x:Name="LoadCellResultText" Text="Current calibrated load: —" FontSize="18" FontWeight="Bold" Margin="0,12,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Pressure sensor — linear voltage scaling">
+                    <StackPanel>
+                        <TextBlock Text="Set the voltage that represents zero pressure, the voltage at full scale, and the corresponding pressure value. Readings are interpolated linearly." TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="190"/>
+                                <ColumnDefinition Width="130"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Zero-pressure voltage (V):" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox x:Name="PressureZeroVoltageTextBox" Grid.Row="0" Grid.Column="1" Margin="0,4" TextChanged="PressureScale_TextChanged"/>
+                            <TextBlock Grid.Row="1" Text="Full-scale voltage (V):" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox x:Name="PressureFullScaleVoltageTextBox" Grid.Row="1" Grid.Column="1" Margin="0,4" TextChanged="PressureScale_TextChanged"/>
+                            <TextBlock Grid.Row="2" Text="Full-scale pressure (PSI):" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox x:Name="PressureFullScaleValueTextBox" Grid.Row="2" Grid.Column="1" Margin="0,4" TextChanged="PressureScale_TextChanged"/>
+                        </Grid>
+                        <TextBlock x:Name="PressureCalibrationLiveText" Text="Current pressure: —" FontSize="18" FontWeight="Bold" Margin="0,10,0,0"/>
+                        <TextBlock x:Name="PressureValidationText" Foreground="OrangeRed" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </GroupBox>
             </StackPanel>
-        </StackPanel>
-
-        <!-- Buttons Section -->
-        <StackPanel Grid.Row="2" 
-            Orientation="Horizontal" 
-            HorizontalAlignment="Right"
-            Margin="0,20,0,0">
-            <Button x:Name="ApplyButton"
-            Content="Apply"
-            Width="100"
-            Height="30"
-            Margin="0,0,10,0"
-            Click="ApplyButton_Click"/>
-
-            <Button x:Name="SaveButton"
-            Content="Save"
-            Width="100"
-            Height="30"
-            Click="SaveButton_Click"/>
-        </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="1" Background="#2D2D30" Padding="16,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock x:Name="SettingsStatusText" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="#BDBDBD"/>
+                <Button Content="Apply" Width="100" Height="32" Margin="0,0,10,0" Click="ApplyButton_Click"/>
+                <Button Content="Save" Width="100" Height="32" Click="SaveButton_Click"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </Page>
