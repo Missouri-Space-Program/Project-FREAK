@@ -12,6 +12,10 @@ namespace Project_FREAK.Controllers
         private readonly WpfPlot _thrustGraph;
         private readonly WpfPlot _pressureGraph;
         private const int WindowSize = 1000; // Resolution of display buffer in data points
+        private const int EntriesPerColumn = 2; // Each display column adds a minimum and a maximum
+        private readonly List<(double time, double thrust, double pressure)> _pendingPoints = new(); // Points waiting for their column to complete
+        private double _lastThrust; // Most recent plotted values, held across empty columns
+        private double _lastPressure;
         private int _windowSeconds = 15; // Relative time window in seconds
         private double _lastAddedTime = -1;
         private double _thrustFullScaleNewtons;
@@ -87,7 +91,8 @@ namespace Project_FREAK.Controllers
             RefreshGraphs(); // Refresh the graphs to display the new data
         }
 
-        // Adds multiple data points and refreshes the graphs once to minimize UI thread overhead
+        // Adds multiple data points. Each display column adds the minimum and maximum of its time span,
+        // so brief peaks stay visible when a batch is reduced to the display resolution.
         public void AddDataPoints(IEnumerable<(double time, double thrust, double pressure)> points)
         {
             var list = points as IList<(double time, double thrust, double pressure)> ?? points.ToList();
@@ -99,57 +104,70 @@ namespace Project_FREAK.Controllers
                 TrackObservedRange(list[i].thrust, list[i].pressure);
             }
 
-            double period = (double)_windowSeconds / WindowSize;
             double latestTime = list[^1].time;
-
             if (_lastAddedTime < 0 || latestTime < _lastAddedTime)
             {
+                // First data, or the time base restarted: begin a new column sequence at this batch
+                _pendingPoints.Clear();
                 _lastAddedTime = list[0].time;
             }
+            _pendingPoints.AddRange(list);
 
-            // Guard against large pauses
+            // Guard against large pauses by skipping ahead to the visible window
             if (latestTime - _lastAddedTime > _windowSeconds)
             {
                 _lastAddedTime = latestTime - _windowSeconds;
             }
+            _pendingPoints.RemoveAll(point => point.time < _lastAddedTime);
 
-            double elapsed = latestTime - _lastAddedTime;
-            int steps = (int)(elapsed / period);
+            // A column is added only after its whole time span has arrived, so no points are split or dropped between batches
+            double period = (double)_windowSeconds / WindowSize;
+            double columnSpan = EntriesPerColumn * period;
+            int columns = (int)Math.Clamp((latestTime - _lastAddedTime) / columnSpan, 0, WindowSize / EntriesPerColumn);
 
-            if (steps <= 0 && _thrustStreamer.CountTotal == 0)
+            int next = 0; // Index of the first pending point not yet consumed
+            for (int column = 0; column < columns; column++)
             {
-                steps = 1;
-            }
-
-            if (steps > 0)
-            {
-                steps = Math.Min(steps, WindowSize);
-                if (steps == 1)
+                double columnEnd = _lastAddedTime + (column + 1) * columnSpan;
+                int first = next;
+                while (next < _pendingPoints.Count && _pendingPoints[next].time < columnEnd)
                 {
-                    // Pick the point with greatest peak magnitude
-                    double repThrust = list[^1].thrust;
-                    double repPressure = list[^1].pressure;
-                    for (int i = 0; i < list.Count; i++)
+                    next++;
+                }
+
+                if (next > first)
+                {
+                    double minThrust = double.PositiveInfinity, maxThrust = double.NegativeInfinity;
+                    double minPressure = double.PositiveInfinity, maxPressure = double.NegativeInfinity;
+                    for (int i = first; i < next; i++)
                     {
-                        if (Math.Abs(list[i].thrust) > Math.Abs(repThrust)) repThrust = list[i].thrust;
-                        if (Math.Abs(list[i].pressure) > Math.Abs(repPressure)) repPressure = list[i].pressure;
+                        minThrust = Math.Min(minThrust, _pendingPoints[i].thrust);
+                        maxThrust = Math.Max(maxThrust, _pendingPoints[i].thrust);
+                        minPressure = Math.Min(minPressure, _pendingPoints[i].pressure);
+                        maxPressure = Math.Max(maxPressure, _pendingPoints[i].pressure);
                     }
-                    _thrustStreamer.Add(repThrust);
-                    _pressureStreamer.Add(repPressure);
-                    _lastAddedTime += period;
+
+                    _thrustStreamer.Add(minThrust);
+                    _thrustStreamer.Add(maxThrust);
+                    _pressureStreamer.Add(minPressure);
+                    _pressureStreamer.Add(maxPressure);
+
+                    _lastThrust = _pendingPoints[next - 1].thrust;
+                    _lastPressure = _pendingPoints[next - 1].pressure;
                 }
                 else
                 {
-                    double stepSpan = (double)(list.Count - 1) / (steps - 1);
-                    for (int s = 0; s < steps; s++)
+                    // No samples in this span: hold the last value so the time axis stays aligned
+                    for (int i = 0; i < EntriesPerColumn; i++)
                     {
-                        int idx = Math.Clamp((int)Math.Round(s * stepSpan), 0, list.Count - 1);
-                        _thrustStreamer.Add(list[idx].thrust);
-                        _pressureStreamer.Add(list[idx].pressure);
+                        _thrustStreamer.Add(_lastThrust);
+                        _pressureStreamer.Add(_lastPressure);
                     }
-                    _lastAddedTime += steps * period;
                 }
             }
+
+            _lastAddedTime += columns * columnSpan;
+            _pendingPoints.RemoveRange(0, next);
 
             UpdateAxisLimits();
             RefreshGraphs();
@@ -170,6 +188,9 @@ namespace Project_FREAK.Controllers
             _thrustMinimum = _thrustMaximum = 0;
             _pressureMinimum = _pressureMaximum = 0;
             _lastAddedTime = -1;
+            _pendingPoints.Clear();
+            _lastThrust = 0;
+            _lastPressure = 0;
             UpdateAxisLimits();
             RefreshGraphs();
         }

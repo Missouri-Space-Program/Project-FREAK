@@ -64,6 +64,24 @@ namespace Project_FREAK.Tests
         }
 
         [Fact]
+        public void Constructor_IgnoresLegacyAppliedSettingsFile()
+        {
+            Directory.CreateDirectory(cfg);
+            File.WriteAllText(
+                Path.Combine(cfg, "saved_settings.json"),
+                JsonSerializer.Serialize(new SettingsManager.SettingsData { RtspUrl = "rtsp://saved" })
+            );
+            File.WriteAllText(
+                Path.Combine(cfg, "applied_settings.json"),
+                JsonSerializer.Serialize(new SettingsManager.SettingsData { RtspUrl = "rtsp://applied" })
+            );
+
+            var mgr = new SettingsManager();
+
+            Assert.Equal("rtsp://saved", mgr.AppliedSettings.RtspUrl);
+        }
+
+        [Fact]
         public void UpdateAppliedSettings_InvalidChannelsFallBackToCurrentWiringDefaults()
         {
             var mgr = new SettingsManager();
@@ -106,7 +124,7 @@ namespace Project_FREAK.Tests
         }
 
         [Fact]
-        public void UpdateAppliedSettings_RaisesEventAndWritesFiles()
+        public void UpdateAppliedSettings_RaisesEventWithoutWritingSessionFile()
         {
             Directory.CreateDirectory(cfg);
             var mgr = new SettingsManager();
@@ -130,16 +148,7 @@ namespace Project_FREAK.Tests
             Assert.Equal("N", mgr.AppliedSettings.LoadCellFullScaleUnit);
             Assert.Equal(3000, mgr.AppliedSettings.PressureFullScaleValue);
 
-            var applied = JsonSerializer.Deserialize<SettingsManager.SettingsData>(
-                File.ReadAllText(Path.Combine(cfg, "applied_settings.json"))
-            )!;
-            Assert.True(applied.DemoModeEnabled);
-            Assert.Equal("AIN2", applied.PressureInputChannel);
-            Assert.Equal("AIN4", applied.LoadCellInputChannel);
-            Assert.Equal("DAC1", applied.IgniterOutputChannel);
-            Assert.Equal(5000, applied.LoadCellFullScaleValue);
-            Assert.Equal("N", applied.LoadCellFullScaleUnit);
-            Assert.Equal(3000, applied.PressureFullScaleValue);
+            Assert.False(File.Exists(Path.Combine(cfg, "applied_settings.json")));
 
             mgr.SaveAppliedSettingsToDisk();
             var saved = JsonSerializer.Deserialize<SettingsManager.SettingsData>(

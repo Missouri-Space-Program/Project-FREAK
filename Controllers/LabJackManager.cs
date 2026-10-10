@@ -13,6 +13,7 @@ namespace Project_FREAK.Controllers
         private static LabJackManager _instance = null!; // Singleton instance
         private volatile bool _isReading; // Indicates if data is being read from the device
         private volatile bool _isStreaming; // Indicates if hardware or demo streaming is active
+        private int _idleReadGeneration; // Incremented each time idle reads start so older idle loops exit
         private Task? _streamingTask;
         private CancellationTokenSource? _streamingCts;
         private readonly object _deviceLock = new();
@@ -114,9 +115,9 @@ namespace Project_FREAK.Controllers
 
         public void ReconnectDevice()
         {
+            StopStreamingInternal();
             lock (_deviceLock)
             {
-                StopStreamingInternal();
                 if (_handle > 0)
                 {
                     try { LJM.Close(_handle); }
@@ -128,6 +129,8 @@ namespace Project_FREAK.Controllers
                 _returnTimer?.Dispose();
                 _returnTimer = null;
                 InitalizeLabJack();
+                // StartStreaming turns off idle reads, so restore them here. Without this the UI stops receiving data.
+                if (!_isStreaming) StartReading();
                 ConnectionStatusChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -184,15 +187,22 @@ namespace Project_FREAK.Controllers
                 _isStreaming = true;
                 _streamingCts = new CancellationTokenSource();
                 var token = _streamingCts.Token;
+                bool useDemo = _isDemo || _handle <= 0;
 
-                if (_isDemo || _handle <= 0)
+                _streamingTask = Task.Run(() =>
                 {
-                    _streamingTask = Task.Run(() => RunDemoStreamingLoop(rateHz, token), token);
-                }
-                else
-                {
-                    _streamingTask = Task.Run(() => RunHardwareStreamingLoop(rateHz, token), token);
-                }
+                    try
+                    {
+                        if (useDemo)
+                            RunDemoStreamingLoop(rateHz, token);
+                        else
+                            RunHardwareStreamingLoop(rateHz, token);
+                    }
+                    finally
+                    {
+                        EndStreamingAfterUnexpectedExit(token);
+                    }
+                }, token);
             }
         }
 
@@ -202,8 +212,8 @@ namespace Project_FREAK.Controllers
 
             lock (_deviceLock)
             {
-                // Resume idle polling if not disposed
-                if (_instance != null && (_handle > 0 || _isDemo))
+                // Resume idle polling if not disposed and no new stream has started
+                if (_instance != null && !_isStreaming && (_handle > 0 || _isDemo))
                 {
                     StartReading();
                 }
@@ -212,26 +222,41 @@ namespace Project_FREAK.Controllers
 
         private void StopStreamingInternal()
         {
-            Task? taskToWait = null;
+            Task? taskToWait;
+            CancellationTokenSource? ctsToDispose;
             lock (_deviceLock)
             {
                 if (!_isStreaming) return;
                 _isStreaming = false;
-                _streamingCts?.Cancel();
+                ctsToDispose = _streamingCts;
                 taskToWait = _streamingTask;
+                _streamingCts = null;
+                _streamingTask = null;
+                ctsToDispose?.Cancel();
             }
 
+            // Wait outside the lock because the stream thread's exit path takes _deviceLock.
             try
             {
                 taskToWait?.Wait(500);
             }
             catch { }
 
+            ctsToDispose?.Dispose();
+        }
+
+        // Ends the session when a stream loop exits without a stop request, then resumes idle reads.
+        private void EndStreamingAfterUnexpectedExit(CancellationToken token)
+        {
             lock (_deviceLock)
             {
+                if (token.IsCancellationRequested) return;
+
+                _isStreaming = false;
                 _streamingCts?.Dispose();
                 _streamingCts = null;
                 _streamingTask = null;
+                StartReading();
             }
         }
 
@@ -445,11 +470,13 @@ namespace Project_FREAK.Controllers
         // Starts reading data from the LabJack device
         private void StartReading()
         {
+            // Each call retires any earlier idle loop, so overlapping calls cannot run two loops.
+            int generation = Interlocked.Increment(ref _idleReadGeneration);
             _isReading = true;
             // Spin up a thread from the thread pool to read data from LabJack
             Task.Run(() =>
             {
-                while (_isReading)
+                while (_isReading && generation == Volatile.Read(ref _idleReadGeneration))
                 {
                     ReadData();
                     Thread.Sleep(50);

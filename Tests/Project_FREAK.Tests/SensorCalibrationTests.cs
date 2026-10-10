@@ -25,6 +25,16 @@ public class SensorCalibrationTests
     }
 
     [Fact]
+    public void LoadKilograms_AtLiveExcitation_NormalizesBridgeVoltageToReference()
+    {
+        var calibration = SensorCalibration.FitLoadCell(0, 0.001, 2.5, 10, 0.006, 5.0);
+
+        // Bridge output is proportional to excitation: 0.006 V at 5.0 V equals 0.0045 V at 3.75 V.
+        Assert.Equal(10, SensorCalibration.LoadKilograms(calibration, 0.006, 5.0), 6);
+        Assert.Equal(0, SensorCalibration.LoadKilograms(calibration, 0.002, 5.0), 6);
+    }
+
+    [Fact]
     public void FitLoadCell_RejectsDuplicateVoltageSamples()
     {
         Assert.Throws<ArgumentException>(() => SensorCalibration.FitLoadCell(0, 0.001, 2.5, 10, 0.001, 2.5));

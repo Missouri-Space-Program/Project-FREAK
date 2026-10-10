@@ -497,6 +497,12 @@ public partial class GeneralSettingsPage : Page
 
     private void ApplyButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_settingsManager.IsLockedForRecording)
+        {
+            SettingsStatusText.Text = "Settings are locked while a recording is in progress.";
+            return;
+        }
+
         if (!UpdatePendingSettings())
             return;
 
@@ -506,6 +512,12 @@ public partial class GeneralSettingsPage : Page
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_settingsManager.IsLockedForRecording)
+        {
+            SettingsStatusText.Text = "Settings are locked while a recording is in progress.";
+            return;
+        }
+
         if (!UpdatePendingSettings())
             return;
 

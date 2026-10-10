@@ -4,14 +4,14 @@ using Xunit;
 
 namespace Project_FREAK.Tests;
 
-public class SimpsonIntegratorTests
+public class CubicSplineIntegratorTests
 {
     [Fact]
-    public void Integrate_UsesMathNetSimpsonRuleForUnevenSamples()
+    public void Integrate_UsesNaturalCubicSplineForUnevenSamples()
     {
         double[] time = { 0, 1, 3, 4 };
         double[] values = { 2, 4, 8, 10 };
-        double result = SimpsonIntegrator.Integrate(
+        double result = CubicSplineIntegrator.Integrate(
             time,
             values);
         var spline = CubicSpline.InterpolateNaturalSorted(time, values);
@@ -24,7 +24,7 @@ public class SimpsonIntegratorTests
     {
         double[] time = { 0, 1, 1, 2 };
         double[] values = { 0, 2, 4, 4 };
-        double result = SimpsonIntegrator.Integrate(
+        double result = CubicSplineIntegrator.Integrate(
             time,
             values);
         var spline = CubicSpline.InterpolateNaturalSorted(
@@ -37,7 +37,7 @@ public class SimpsonIntegratorTests
     [Fact]
     public void Integrate_FallsBackToTrapezoidForTwoSamples()
     {
-        double result = SimpsonIntegrator.Integrate(
+        double result = CubicSplineIntegrator.Integrate(
             new[] { 0d, 2 },
             new[] { 1d, 3 });
 

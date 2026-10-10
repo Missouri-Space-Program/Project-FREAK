@@ -49,4 +49,39 @@ public class LabJackManagerTests
             Assert.False(manager.IsStreaming);
         }
     }
+
+    [Fact]
+    public async Task ReconnectDevice_WhileStreaming_ResumesIdleReads()
+    {
+        var manager = LabJackManager.Instance;
+        manager.StartStreaming(1000);
+        try
+        {
+            manager.ReconnectDevice();
+            Assert.False(manager.IsStreaming);
+
+            var idleReadTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            void Handler(double thrustVoltage, double thrust, double pressureVoltage, double pressure)
+            {
+                idleReadTcs.TrySetResult(true);
+            }
+
+            manager.DataUpdated += Handler;
+            try
+            {
+                var idleReadTask = idleReadTcs.Task;
+                var completedTask = await Task.WhenAny(idleReadTask, Task.Delay(2000));
+                Assert.Same(idleReadTask, completedTask);
+            }
+            finally
+            {
+                manager.DataUpdated -= Handler;
+            }
+        }
+        finally
+        {
+            manager.StopStreaming();
+        }
+    }
 }

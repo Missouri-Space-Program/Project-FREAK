@@ -3,7 +3,7 @@ using MathNet.Numerics.Interpolation;
 
 namespace Project_FREAK.Controllers;
 
-public static class SimpsonIntegrator
+public static class CubicSplineIntegrator
 {
     public static double Integrate(IReadOnlyList<double> time, IReadOnlyList<double> values)
     {

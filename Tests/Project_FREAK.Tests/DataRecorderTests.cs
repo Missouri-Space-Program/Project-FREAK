@@ -37,6 +37,35 @@ namespace Project_FREAK.Tests.Tests
         }
 
         [Fact]
+        public void ExportToJson_WhenWriteFails_KeepsTemporaryDataForRetry()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), $"dr_retry_{Guid.NewGuid()}");
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var dr = new DataRecorder();
+                dr.StartRecording(folder);
+                dr.AddDataPoint(0.0, 1.0, 2.0, 3.0, 4.0);
+                dr.StopRecording();
+
+                var unwritablePath = Path.Combine(folder, "missing", "final.json");
+                Assert.ThrowsAny<IOException>(() => dr.ExportToJson(unwritablePath));
+                Assert.Single(Directory.GetFiles(folder, "temp_data_*.jsonl"));
+
+                var finalJson = Path.Combine(folder, "final.json");
+                dr.ExportToJson(finalJson);
+
+                Assert.True(File.Exists(finalJson));
+                Assert.Empty(Directory.GetFiles(folder, "temp_data_*.jsonl"));
+            }
+            finally
+            {
+                if (Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+            }
+        }
+
+        [Fact]
         public void AddDataPoints_AppendsBatchCorrectly()
         {
             var dr = new DataRecorder();
@@ -125,7 +154,7 @@ namespace Project_FREAK.Tests.Tests
                 Assert.Equal(0.0, dataset.TimeSeconds[0]);
                 Assert.Equal(0.999, dataset.TimeSeconds[^1], 3);
 
-                double impulse = SimpsonIntegrator.Integrate(dataset.TimeSeconds, dataset.ThrustNewtons);
+                double impulse = CubicSplineIntegrator.Integrate(dataset.TimeSeconds, dataset.ThrustNewtons);
                 Assert.True(impulse > 0);
             }
             finally

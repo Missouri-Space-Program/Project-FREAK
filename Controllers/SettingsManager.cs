@@ -16,10 +16,6 @@ public class SettingsManager : INotifyPropertyChanged
         AppDomain.CurrentDomain.BaseDirectory,
         "Assets", "CONFIG", "saved_settings.json");
 
-    private static readonly string AppliedSettingsPath = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory,
-        "Assets", "CONFIG", "applied_settings.json");
-
     // Settings data
     private SettingsData _appliedSettings = new();
     public SettingsData AppliedSettings
@@ -33,10 +29,14 @@ public class SettingsManager : INotifyPropertyChanged
         }
     }
 
+    // True while a recording is active. Apply and Save are blocked so a recording keeps one calibration and configuration.
+    public bool IsLockedForRecording { get; private set; }
+
+    public void SetRecordingLock(bool isLocked) => IsLockedForRecording = isLocked;
+
     public SettingsManager()
     {
         LoadSavedSettings();
-        LoadAppliedSettings();
     }
 
     // Loads saved settings from disk
@@ -69,35 +69,11 @@ public class SettingsManager : INotifyPropertyChanged
         catch { /* Handle errors */ }
     }
 
-    // Updates the applied settings and saves them to disk
+    // Updates the applied settings for this session only. Nothing is written to disk here; use SaveAppliedSettingsToDisk to persist.
     public void UpdateAppliedSettings(SettingsData newSettings)
     {
         AppliedSettings = newSettings.Clone().NormalizeChannels();
         AppliedSettingsChanged?.Invoke(this, EventArgs.Empty); // Trigger the AppliedSettingsChanged event
-
-        // Save applied settings to session file
-        try
-        {
-            var json = JsonSerializer.Serialize(AppliedSettings);
-            Directory.CreateDirectory(Path.GetDirectoryName(AppliedSettingsPath)!); // Ensure the directory exists
-            File.WriteAllText(AppliedSettingsPath, json);
-        }
-        catch { /* Handle errors */ }
-    }
-
-    // Loads the applied settings from disk
-    public void LoadAppliedSettings()
-    {
-        try
-        {
-            if (File.Exists(AppliedSettingsPath))
-            {
-                var json = File.ReadAllText(AppliedSettingsPath);
-                var settings = JsonSerializer.Deserialize<SettingsData>(json);
-                AppliedSettings = (settings ?? new SettingsData()).NormalizeChannels(); // Set AppliedSettings to the loaded settings or a new instance if null
-            }
-        }
-        catch { /* Handle errors */ }
     }
 
     // Class representing the settings data

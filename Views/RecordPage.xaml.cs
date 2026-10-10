@@ -270,6 +270,7 @@ namespace Project_FREAK.Views
             }
 
             _isRecording = false;
+            ((App)Application.Current).SettingsManager.SetRecordingLock(false);
             _labjackManager.StopStreaming();
 
             if (_isVideoRecording)
@@ -307,20 +308,30 @@ namespace Project_FREAK.Views
                 var jsonFileName = $"data_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
                 var jsonPath = Path.Combine(_currentSessionFolder, jsonFileName);
 
-                _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath());
+                // The recorder keeps its temporary data until an export succeeds, so the user can retry a failed save.
+                while (true)
+                {
+                    try
+                    {
+                        _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath());
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        var retry = MessageBox.Show(
+                            $"Error saving data: {ex.Message}\n\nThe recorded data is still kept in:\n{_currentSessionFolder}\n\nRetry saving?",
+                            "Error", MessageBoxButton.YesNo, MessageBoxImage.Error);
+                        if (retry != MessageBoxResult.Yes)
+                        {
+                            return;
+                        }
+                    }
+                }
 
                 if (showPrompt)
                 {
                     MessageBox.Show(GetSaveSummary(), "Success",
                         MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
-            {
-                if (showPrompt)
-                {
-                    MessageBox.Show($"Error saving data: {ex.Message}", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             finally
@@ -404,6 +415,7 @@ namespace Project_FREAK.Views
 
                 _dataRecorder.StartRecording(_currentSessionFolder);
                 _isRecording = true;
+                ((App)Application.Current).SettingsManager.SetRecordingLock(true);
                 var appliedSettings = ((App)Application.Current).SettingsManager.AppliedSettings;
                 _labjackManager.StartStreaming(appliedSettings.SamplingRateHz);
                 StartTestTextBlock.Text = "Stop Recording";
@@ -425,6 +437,7 @@ namespace Project_FREAK.Views
             catch (Exception ex)
             {
                 _isRecording = false;
+                ((App)Application.Current).SettingsManager.SetRecordingLock(false);
                 _labjackManager.StopStreaming();
                 _dataRecorder.StopRecording();
                 MessageBox.Show($"Error starting sensor data recording: {ex.Message}", "Error",

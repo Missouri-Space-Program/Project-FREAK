@@ -88,6 +88,7 @@ namespace Project_FREAK.Controllers
         // Exports the collected data to final JSON format
         public void ExportToJson(string finalPath, string? videoPath = null)
         {
+            bool exported = false;
             try
             {
                 const int maxRetries = 5;
@@ -181,6 +182,7 @@ namespace Project_FREAK.Controllers
                             writer.Flush();
                         }
 
+                        exported = true;
                         break;
                     }
                     catch (IOException) when (i < maxRetries - 1)
@@ -191,9 +193,10 @@ namespace Project_FREAK.Controllers
             }
             finally
             {
+                // Keep the temporary data when the export failed so it can be retried.
                 lock (_syncLock)
                 {
-                    if (_writerTask == null && _channel == null && _tempDataPath != null)
+                    if (exported && _writerTask == null && _channel == null && _tempDataPath != null)
                     {
                         try
                         {

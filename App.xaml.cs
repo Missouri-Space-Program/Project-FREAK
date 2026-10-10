@@ -16,7 +16,6 @@ namespace Project_FREAK
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-            SettingsManager.LoadAppliedSettings(); // Load session settings instead of saved
             var labJackManager = LabJackManager.Instance;
             labJackManager.ApplyCalibration(SettingsManager.AppliedSettings);
             SettingsManager.AppliedSettingsChanged += (_, _) => labJackManager.ApplyCalibration(SettingsManager.AppliedSettings);

@@ -47,8 +47,9 @@ public static class SensorCalibration
             throw new ArgumentOutOfRangeException(nameof(excitationVoltage), "A finite bridge voltage and positive excitation voltage are required.");
         }
 
-        // Apply the fitted line, then scale its result by live excitation relative to the reference.
-        return (calibration.Slope * bridgeVoltage + calibration.Offset) * excitationVoltage / calibration.ExcitationReferenceVoltage;
+        // Bridge output is ratiometric, so express the live reading at the reference excitation before applying the fitted line.
+        double normalizedVoltage = bridgeVoltage * calibration.ExcitationReferenceVoltage / excitationVoltage;
+        return calibration.Slope * normalizedVoltage + calibration.Offset;
     }
 
     public static double ScalePressure(double voltage, double zeroVoltage, double fullScaleVoltage, double fullScaleValue)

@@ -284,7 +284,7 @@ public partial class ReviewDataPage : Page
         double averagePressure = pressure.Count > 0 ? pressureSum / pressure.Count : 0;
         double maximumPressure = pressure.Count > 0 ? pressureMax : 0;
 
-        double totalImpulse = SimpsonIntegrator.Integrate(time, thrust);
+        double totalImpulse = CubicSplineIntegrator.Integrate(time, thrust);
         string motorDesignation = MotorDesignation.Format(totalImpulse, averageThrust);
 
         return $"{heading}\nSamples: {time.Count}    Duration: {duration:F2} s\n" +

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
+using ScottPlot.Plottables;
 using ScottPlot.WPF;
 using Project_FREAK.Controllers;
 using Xunit;
@@ -111,6 +113,34 @@ namespace Project_FREAK.Tests
 
                 Assert.True(thrustGraph.Plot.Axes.GetLimits().Top >= 2500);
                 Assert.True(pressureGraph.Plot.Axes.GetLimits().Top >= 900);
+            });
+        }
+
+        [Fact]
+        public void AddDataPoints_BriefPeak_IsPlotted()
+        {
+            RunInSta(() =>
+            {
+                var thrustGraph = new WpfPlot();
+                var pressureGraph = new WpfPlot();
+                var settings = new SettingsManager.SettingsData
+                {
+                    LoadCellFullScaleValue = 1000,
+                    LoadCellFullScaleUnit = "N",
+                    PressureFullScaleValue = 500
+                };
+                var gm = new GraphManager(thrustGraph, pressureGraph, settings);
+
+                var points = new (double, double, double)[100];
+                for (int i = 0; i < 100; i++)
+                {
+                    points[i] = (i * 0.001, i == 45 ? 2500.0 : 100.0, 50.0);
+                }
+
+                gm.AddDataPoints(points);
+
+                var thrustStreamer = thrustGraph.Plot.GetPlottables<DataStreamer>().Single();
+                Assert.True(thrustStreamer.Data.DataMax >= 2500);
             });
         }
 
