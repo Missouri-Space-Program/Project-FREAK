@@ -257,7 +257,7 @@ public partial class ReviewDataPage : Page
         double maximumThrust = thrust.Max();
         double averagePressure = pressure.Average();
         double maximumPressure = pressure.Max();
-        double totalImpulse = IntegrateTrapezoid(time, thrust);
+        double totalImpulse = SimpsonIntegrator.Integrate(time, thrust);
         string motorDesignation = MotorDesignation.Format(totalImpulse, averageThrust);
 
         return $"{heading}\nSamples: {time.Length}    Duration: {duration:F2} s\n" +
@@ -265,14 +265,6 @@ public partial class ReviewDataPage : Page
                $"Average pressure: {averagePressure:F2} PSI    Peak pressure: {maximumPressure:F2} PSI\n" +
                $"Total impulse: {totalImpulse:F2} N·s\n" +
                $"Motor Designation: {motorDesignation}";
-    }
-
-    private static double IntegrateTrapezoid(double[] time, double[] values)
-    {
-        double total = 0;
-        for (int index = 1; index < time.Length; index++)
-            total += (time[index] - time[index - 1]) * (values[index] + values[index - 1]) / 2;
-        return total;
     }
 
     private void LoadVideo(string? path)
