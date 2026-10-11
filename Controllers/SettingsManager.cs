@@ -12,9 +12,11 @@ public class SettingsManager : INotifyPropertyChanged
 
     // Paths to the settings files
 
-    private static readonly string SavedSettingsPath = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory,
-        "Assets", "CONFIG", "saved_settings.json");
+    private static readonly string DefaultSavedSettingsPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Project-FREAK", "saved_settings.json");
+
+    private readonly string SavedSettingsPath;
 
     // Settings data
     private SettingsData _appliedSettings = new();
@@ -34,8 +36,13 @@ public class SettingsManager : INotifyPropertyChanged
 
     public void SetRecordingLock(bool isLocked) => IsLockedForRecording = isLocked;
 
-    public SettingsManager()
+    public SettingsManager() : this(DefaultSavedSettingsPath)
     {
+    }
+
+    public SettingsManager(string savedSettingsPath)
+    {
+        SavedSettingsPath = savedSettingsPath;
         LoadSavedSettings();
     }
 

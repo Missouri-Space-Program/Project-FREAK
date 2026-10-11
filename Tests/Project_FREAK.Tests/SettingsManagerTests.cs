@@ -9,8 +9,10 @@ namespace Project_FREAK.Tests
     public class SettingsManagerTests : IDisposable
     {
         readonly string cfg = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "Assets", "CONFIG");
+            Path.GetTempPath(),
+            "Project-FREAK.Tests", Guid.NewGuid().ToString("N"));
+
+        SettingsManager CreateManager() => new SettingsManager(Path.Combine(cfg, "saved_settings.json"));
 
         public SettingsManagerTests()
         {
@@ -25,7 +27,7 @@ namespace Project_FREAK.Tests
         [Fact]
         public void DefaultConstructor_NoFiles_AppliedSettingsHaveDefaults()
         {
-            var mgr = new SettingsManager();
+            var mgr = CreateManager();
             Assert.False(mgr.AppliedSettings.DemoModeEnabled);
             Assert.StartsWith("rtsp://admin", mgr.AppliedSettings.RtspUrl);
             Assert.Equal("AIN0", mgr.AppliedSettings.PressureInputChannel);
@@ -55,7 +57,7 @@ namespace Project_FREAK.Tests
                 JsonSerializer.Serialize(exp)
             );
 
-            var mgr = new SettingsManager();
+            var mgr = CreateManager();
             Assert.True(mgr.AppliedSettings.DemoModeEnabled);
             Assert.Equal("rtsp://test", mgr.AppliedSettings.RtspUrl);
             Assert.Equal("AIN2", mgr.AppliedSettings.PressureInputChannel);
@@ -76,7 +78,7 @@ namespace Project_FREAK.Tests
                 JsonSerializer.Serialize(new SettingsManager.SettingsData { RtspUrl = "rtsp://applied" })
             );
 
-            var mgr = new SettingsManager();
+            var mgr = CreateManager();
 
             Assert.Equal("rtsp://saved", mgr.AppliedSettings.RtspUrl);
         }
@@ -84,7 +86,7 @@ namespace Project_FREAK.Tests
         [Fact]
         public void UpdateAppliedSettings_InvalidChannelsFallBackToCurrentWiringDefaults()
         {
-            var mgr = new SettingsManager();
+            var mgr = CreateManager();
             mgr.UpdateAppliedSettings(new SettingsManager.SettingsData
             {
                 PressureInputChannel = "AIN99",
@@ -104,7 +106,7 @@ namespace Project_FREAK.Tests
         [Fact]
         public void UpdateAppliedSettings_NormalizesInvalidLoadCellRangeAndConvertsNewtons()
         {
-            var mgr = new SettingsManager();
+            var mgr = CreateManager();
             mgr.UpdateAppliedSettings(new SettingsManager.SettingsData
             {
                 LoadCellFullScaleValue = double.NaN,
@@ -127,7 +129,7 @@ namespace Project_FREAK.Tests
         public void UpdateAppliedSettings_RaisesEventWithoutWritingSessionFile()
         {
             Directory.CreateDirectory(cfg);
-            var mgr = new SettingsManager();
+            var mgr = CreateManager();
             bool fired = false;
             mgr.AppliedSettingsChanged += (_, __) => fired = true;
 

@@ -179,6 +179,9 @@ DocProject/Help/html
 # Click-Once directory
 publish/
 
+# Built installer (installer\build-installer.ps1 output)
+installer/output/
+
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml

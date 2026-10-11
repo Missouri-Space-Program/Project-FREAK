@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -8,6 +9,8 @@ public partial class ModeSelectionPage : Page
     public ModeSelectionPage()
     {
         InitializeComponent();
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3);
+        VersionText.Text = $"Version {version}";
     }
 
     private void RecordButton_Click(object sender, RoutedEventArgs e)

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Project_FREAK"
         mc:Ignorable="d"
-        Icon="/Project-Freak;component/Assets/LOGOS/MSP_LOGO_BG.png"
+        Icon="/Project-FREAK;component/Assets/LOGOS/Project-FREAK.ico"
         Title="FREAK" Height="900" Width="1600">
     <Grid>
         <DockPanel>

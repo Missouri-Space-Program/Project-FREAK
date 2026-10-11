@@ -11,5 +11,6 @@
             <Button Content="Settings" Height="50" FontSize="18" Margin="0,0,0,10" Click="SettingsButton_Click"/>
             <Button Content="Help" Height="50" FontSize="18" Click="HelpButton_Click"/>
         </StackPanel>
+        <TextBlock x:Name="VersionText" Foreground="#888888" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12"/>
     </Grid>
 </Page>
