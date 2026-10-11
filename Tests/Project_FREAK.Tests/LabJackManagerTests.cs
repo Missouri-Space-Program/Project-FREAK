@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Project_FREAK.Controllers;
@@ -54,10 +55,19 @@ public class LabJackManagerTests
     public async Task ReconnectDevice_WhileStreaming_ResumesIdleReads()
     {
         var manager = LabJackManager.Instance;
-        manager.StartStreaming(1000);
+        var batchTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void BatchHandler(DataPointRecord[] _) => batchTcs.TrySetResult(true);
+        manager.BatchDataUpdated += BatchHandler;
+        manager.StartStreaming(10);
         try
         {
+            var batchTask = batchTcs.Task;
+            Assert.Same(batchTask, await Task.WhenAny(batchTask, Task.Delay(2000)));
+
+            var stopTimer = Stopwatch.StartNew();
             manager.ReconnectDevice();
+            stopTimer.Stop();
+            Assert.True(stopTimer.Elapsed >= TimeSpan.FromMilliseconds(800));
             Assert.False(manager.IsStreaming);
 
             var idleReadTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -81,6 +91,7 @@ public class LabJackManagerTests
         }
         finally
         {
+            manager.BatchDataUpdated -= BatchHandler;
             manager.StopStreaming();
         }
     }

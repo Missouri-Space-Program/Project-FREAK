@@ -24,6 +24,7 @@ namespace Project_FREAK.Views
         private bool _isSaving = false;
         private bool _isRecording = false; // Flag to indicate if recording is in progress
         private bool _isVideoRecording;
+        private bool _managersInitialized;
         private const int graphFPS = 30;
         private string? _currentSessionFolder;
         private string? _currentVideoPath;
@@ -33,6 +34,7 @@ namespace Project_FREAK.Views
         {
             InitializeComponent();
             Loaded += RecordPage_Loaded;
+            Unloaded += RecordPage_Unloaded;
         }
 
         // Sets up the countdown timer interval
@@ -50,8 +52,12 @@ namespace Project_FREAK.Views
         // Handles the Loaded event of the page
         private async void RecordPage_Loaded(object sender, RoutedEventArgs e)
         {
+            if (_managersInitialized)
+                return;
+
             // Initialize managers asynchronously
             await InitializeManagersAsync();
+            _managersInitialized = true;
 
             _stopwatch.Start();
             SetupCameraEvents();
@@ -69,11 +75,11 @@ namespace Project_FREAK.Views
                 ControlPanelTitle.Foreground = Brushes.Orange;
             }
             _webcamManager = new WebcamManager(Dispatcher);
-            _dataRecorder = new DataRecorder();
+            if (_currentSessionFolder == null)
+                _dataRecorder = new DataRecorder();
             _countdownService = new CountdownService(Dispatcher);
 
             // Subscribe to events
-            Unloaded += RecordPage_Unloaded;
             _labjackManager.DataUpdated += UpdateGraphs;
             _labjackManager.BatchDataUpdated += OnBatchDataUpdated;
             _labjackManager.StreamingFailed += OnStreamingFailed;
@@ -190,9 +196,11 @@ namespace Project_FREAK.Views
 
                 if (_isRecording)
                 {
-                    StopTestAndSave(showPrompt: false);
+                    bool saved = StopTestAndSave(showPrompt: false);
                     MessageBox.Show(
-                        $"Sensor acquisition failed. Recording stopped; partial data will be marked failed in the exported JSON.\n\n{message}",
+                        saved
+                            ? $"Sensor acquisition failed. Recording stopped and partial data was exported as failed.\n\n{message}"
+                            : $"Sensor acquisition failed. Recording stopped, but partial data is still pending export. Use Retry Save to try again.\n\n{message}",
                         "Recording failed",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
@@ -236,7 +244,13 @@ namespace Project_FREAK.Views
             // If currently recording and user presses Arm/Disarm, stop recording and ensure data is saved
             if (_isRecording)
             {
-                StopTestAndSave(showPrompt: true);
+                if (!StopTestAndSave(showPrompt: true))
+                    return;
+            }
+            else if (_currentSessionFolder != null)
+            {
+                RetryPendingSave();
+                return;
             }
 
             _labjackManager.ArmDisarmIgniter(); // Arm or disarm the igniter
@@ -259,6 +273,12 @@ namespace Project_FREAK.Views
         // Handles the click event of the Start Test button
         private void StartTestButton_Click(object sender, RoutedEventArgs e)
         {
+            if (!_isRecording && _currentSessionFolder != null)
+            {
+                RetryPendingSave();
+                return;
+            }
+
             if (_labjackManager.GetArmedStatus() && !_isRecording)
             {
                 _countdownService.ToggleCountdown(5);
@@ -284,11 +304,11 @@ namespace Project_FREAK.Views
         /// Stops active recording, safely saves sensor data & video, and resets UI state.
         /// </summary>
         /// <param name="showPrompt">Whether to show a message box summarizing the save.</param>
-        private void StopTestAndSave(bool showPrompt)
+        private bool StopTestAndSave(bool showPrompt)
         {
             if (!_isRecording && _currentSessionFolder == null)
             {
-                return;
+                return true;
             }
 
             _isRecording = false;
@@ -313,16 +333,35 @@ namespace Project_FREAK.Views
 
             if (_currentSessionFolder != null)
             {
-                SaveData(showPrompt);
+                if (!SaveData(showPrompt))
+                {
+                    StartTestTextBlock.Text = "Retry Save";
+                    return false;
+                }
             }
 
-            _currentSessionFolder = null;
-            _currentVideoPath = null;
+            ClearSessionState();
+            return true;
         }
 
-        private void SaveData(bool showPrompt = true)
+        private void RetryPendingSave()
         {
-            if (_currentSessionFolder == null) return;
+            if (SaveData(showPrompt: true))
+                ClearSessionState();
+        }
+
+        private void ClearSessionState()
+        {
+            _currentSessionFolder = null;
+            _currentVideoPath = null;
+            _recordingFailureReason = null;
+            StartTestTextBlock.Text = "Start";
+            StartButton.Background = _labjackManager.GetArmedStatus() ? Brushes.Orange : Brushes.DarkGray;
+        }
+
+        private bool SaveData(bool showPrompt = true)
+        {
+            if (_currentSessionFolder == null) return false;
 
             try
             {
@@ -345,7 +384,7 @@ namespace Project_FREAK.Views
                             "Error", MessageBoxButton.YesNo, MessageBoxImage.Error);
                         if (retry != MessageBoxResult.Yes)
                         {
-                            return;
+                            return false;
                         }
                     }
                 }
@@ -355,6 +394,7 @@ namespace Project_FREAK.Views
                     MessageBox.Show(GetSaveSummary(), "Success",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 }
+                return true;
             }
             finally
             {
@@ -369,13 +409,15 @@ namespace Project_FREAK.Views
             _countdownService.CancelCountdown();
 
             // Ensure any active recording is safely saved if the user navigates away or closes the page
+            bool saved = true;
             if (_isRecording || _currentSessionFolder != null)
             {
-                StopTestAndSave(showPrompt: false);
+                saved = StopTestAndSave(showPrompt: false);
             }
 
             // Cleanup resources
-            _dataRecorder.Dispose();
+            if (saved)
+                _dataRecorder.Dispose();
             _stopwatch.Reset();
             _webcamManager.Dispose();
             _labjackManager.StopStreaming();
@@ -386,6 +428,7 @@ namespace Project_FREAK.Views
             _labjackManager.DataUpdated -= UpdateGraphs;
             _labjackManager.BatchDataUpdated -= OnBatchDataUpdated;
             _labjackManager.StreamingFailed -= OnStreamingFailed;
+            _managersInitialized = false;
         }
 
         // Handles settings changes

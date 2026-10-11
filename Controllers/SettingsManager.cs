@@ -64,7 +64,7 @@ public class SettingsManager : INotifyPropertyChanged
 
 
     // Saves the applied settings to disk
-    public void SaveAppliedSettingsToDisk()
+    public bool SaveAppliedSettingsToDisk()
     {
         try
         {
@@ -72,8 +72,12 @@ public class SettingsManager : INotifyPropertyChanged
             Directory.CreateDirectory(Path.GetDirectoryName(SavedSettingsPath)!); // Ensure the directory exists
 
             File.WriteAllText(SavedSettingsPath, json);
+            return true;
         }
-        catch { /* Handle errors */ }
+        catch
+        {
+            return false;
+        }
     }
 
     // Updates the applied settings for this session only. Nothing is written to disk here; use SaveAppliedSettingsToDisk to persist.

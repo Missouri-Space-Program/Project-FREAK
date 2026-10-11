@@ -321,6 +321,12 @@ public partial class GeneralSettingsPage : Page
 
     private void CapturePoint(TextBox weightTextBox, bool isFirstPoint)
     {
+        if (_labJackManager.IsDemo())
+        {
+            LoadCellCalibrationStatus.Text = "Calibration samples require a connected LabJack; simulated readings cannot calibrate hardware.";
+            return;
+        }
+
         if (!TryReadNonNegative(weightTextBox.Text, out double weightKg))
         {
             LoadCellCalibrationStatus.Text = "Enter a valid known mass in kilograms before capturing.";
@@ -544,8 +550,16 @@ public partial class GeneralSettingsPage : Page
             return;
 
         _settingsManager.UpdateAppliedSettings(_pendingSettings.Clone());
-        _settingsManager.SaveAppliedSettingsToDisk();
-        SettingsStatusText.Text = "Settings applied and saved for future sessions.";
+        if (_settingsManager.SaveAppliedSettingsToDisk())
+        {
+            SettingsStatusText.Text = "Settings applied and saved for future sessions.";
+            SettingsStatusText.Foreground = Brushes.LightGreen;
+        }
+        else
+        {
+            SettingsStatusText.Text = "Settings applied for this session, but saving to disk failed.";
+            SettingsStatusText.Foreground = Brushes.OrangeRed;
+        }
     }
 
     private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)

@@ -174,7 +174,7 @@ namespace Project_FREAK.Tests
 
             Assert.False(File.Exists(Path.Combine(cfg, "applied_settings.json")));
 
-            mgr.SaveAppliedSettingsToDisk();
+            Assert.True(mgr.SaveAppliedSettingsToDisk());
             var saved = JsonSerializer.Deserialize<SettingsManager.SettingsData>(
                 File.ReadAllText(Path.Combine(cfg, "saved_settings.json"))
             )!;
@@ -185,6 +185,17 @@ namespace Project_FREAK.Tests
             Assert.Equal(5000, saved.LoadCellFullScaleValue);
             Assert.Equal("N", saved.LoadCellFullScaleUnit);
             Assert.Equal(3000, saved.PressureFullScaleValue);
+        }
+
+        [Fact]
+        public void SaveAppliedSettingsToDisk_ReturnsFalseWhenSettingsCannotBeWritten()
+        {
+            Directory.CreateDirectory(cfg);
+            string blockedParent = Path.Combine(cfg, "not-a-directory");
+            File.WriteAllText(blockedParent, "occupied");
+            var mgr = new SettingsManager(Path.Combine(blockedParent, "saved_settings.json"));
+
+            Assert.False(mgr.SaveAppliedSettingsToDisk());
         }
     }
 }

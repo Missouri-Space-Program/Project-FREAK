@@ -17,6 +17,7 @@ namespace Project_FREAK.Controllers
         private Task? _streamingTask;
         private CancellationTokenSource? _streamingCts;
         private readonly object _deviceLock = new();
+        private readonly object _streamLifecycleLock = new();
         public event Action<double, double, double, double> DataUpdated = delegate { }; // Event triggered when data is updated
         public event Action<DataPointRecord[]> BatchDataUpdated = delegate { }; // Event triggered when a streaming batch is available
         public event Action<double, double> LoadCellCalibrationSampleUpdated = delegate { };
@@ -116,7 +117,15 @@ namespace Project_FREAK.Controllers
 
         public void ReconnectDevice()
         {
-            StopStreamingInternal();
+            lock (_streamLifecycleLock)
+            {
+                StopStreamingInternal();
+                ReconnectDeviceCore();
+            }
+        }
+
+        private void ReconnectDeviceCore()
+        {
             lock (_deviceLock)
             {
                 if (_handle > 0)
@@ -174,41 +183,44 @@ namespace Project_FREAK.Controllers
 
         public void StartStreaming(int? targetScanRateHz = null)
         {
-            lock (_deviceLock)
+            lock (_streamLifecycleLock)
             {
-                if (_isStreaming) return;
-
-                // Stop idle reading
-                _isReading = false;
-
-                var settings = Volatile.Read(ref _calibrationSettings);
-                int rateHz = targetScanRateHz ?? settings.SamplingRateHz;
-                if (rateHz < 10) rateHz = 1000;
-
-                _isStreaming = true;
-                _streamingCts = new CancellationTokenSource();
-                var token = _streamingCts.Token;
-                bool useDemo = _isDemo || _handle <= 0;
-
-                _streamingTask = Task.Run(() =>
+                lock (_deviceLock)
                 {
-                    try
+                    if (_isStreaming) return;
+
+                    // Stop idle reading
+                    _isReading = false;
+
+                    var settings = Volatile.Read(ref _calibrationSettings);
+                    int rateHz = targetScanRateHz ?? settings.SamplingRateHz;
+                    if (rateHz < 10) rateHz = 1000;
+
+                    _isStreaming = true;
+                    _streamingCts = new CancellationTokenSource();
+                    var token = _streamingCts.Token;
+                    bool useDemo = _isDemo || _handle <= 0;
+
+                    _streamingTask = Task.Run(() =>
                     {
-                        if (useDemo)
-                            RunDemoStreamingLoop(rateHz, token);
-                        else
-                            RunHardwareStreamingLoop(rateHz, token);
-                    }
-                    catch (Exception exception)
-                    {
-                        if (!token.IsCancellationRequested)
-                            StreamingFailed?.Invoke($"Sensor acquisition failed: {exception.Message}");
-                    }
-                    finally
-                    {
-                        EndStreamingAfterUnexpectedExit(token);
-                    }
-                }, token);
+                        try
+                        {
+                            if (useDemo)
+                                RunDemoStreamingLoop(rateHz, token);
+                            else
+                                RunHardwareStreamingLoop(rateHz, token);
+                        }
+                        catch (Exception exception)
+                        {
+                            if (!token.IsCancellationRequested)
+                                StreamingFailed?.Invoke($"Sensor acquisition failed: {exception.Message}");
+                        }
+                        finally
+                        {
+                            EndStreamingAfterUnexpectedExit(token);
+                        }
+                    }, token);
+                }
             }
         }
 
@@ -228,27 +240,39 @@ namespace Project_FREAK.Controllers
 
         private void StopStreamingInternal()
         {
+            lock (_streamLifecycleLock)
+            {
+                StopStreamingCore();
+            }
+        }
+
+        private void StopStreamingCore()
+        {
             Task? taskToWait;
             CancellationTokenSource? ctsToDispose;
             lock (_deviceLock)
             {
-                if (!_isStreaming) return;
+                if (_streamingTask == null) return;
                 _isStreaming = false;
                 ctsToDispose = _streamingCts;
                 taskToWait = _streamingTask;
                 _streamingCts = null;
-                _streamingTask = null;
                 ctsToDispose?.Cancel();
             }
 
-            // Wait outside the lock because the stream thread's exit path takes _deviceLock.
+            // Native stream reads are not cancellable; wait outside _deviceLock before reusing the handle.
             try
             {
-                taskToWait?.Wait(500);
+                taskToWait.GetAwaiter().GetResult();
             }
             catch { }
 
             ctsToDispose?.Dispose();
+            lock (_deviceLock)
+            {
+                if (ReferenceEquals(_streamingTask, taskToWait))
+                    _streamingTask = null;
+            }
         }
 
         // Leave idle polling stopped after a failed stream so a recording cannot silently change time bases.
@@ -557,7 +581,15 @@ namespace Project_FREAK.Controllers
         // Closes the LabJack device
         public void CloseDevice()
         {
-            StopStreaming();
+            lock (_streamLifecycleLock)
+            {
+                StopStreaming();
+                CloseDeviceCore();
+            }
+        }
+
+        private void CloseDeviceCore()
+        {
             _isReading = false;
             lock (_deviceLock)
             {
