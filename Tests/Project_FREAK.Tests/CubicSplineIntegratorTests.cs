@@ -43,4 +43,18 @@ public class CubicSplineIntegratorTests
 
         Assert.Equal(4, result, 10);
     }
+
+    [Fact]
+    public void IntegrateAndAverage_WeightsUnevenSamplesByElapsedTime()
+    {
+        double[] time = { 0, 1, 4 };
+        double[] values = { 0, 10, 10 };
+
+        var (integral, average) = CubicSplineIntegrator.IntegrateAndAverage(time, values);
+        var spline = CubicSpline.InterpolateNaturalSorted(time, values);
+
+        Assert.Equal(spline.Integrate(time[0], time[^1]), integral, 10);
+        Assert.Equal(integral / 4, average, 10);
+        Assert.NotEqual(20d / 3, average);
+    }
 }

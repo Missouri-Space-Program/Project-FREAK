@@ -17,6 +17,20 @@ public class NetworkConfigurationServiceTests
         Assert.Equal("Ethernet 2", result);
     }
 
+    [Theory]
+    [InlineData("Ethernet & whoami")]
+    [InlineData("Ethernet|whoami")]
+    [InlineData("Ethernet<file")]
+    [InlineData("Ethernet>file")]
+    [InlineData("Ethernet%PATH%")]
+    [InlineData("Ethernet^whoami")]
+    [InlineData("Ethernet!whoami")]
+    [InlineData("Ethernet\r\nwhoami")]
+    public void EscapeAdapterName_RejectsCommandMetacharacters(string adapterName)
+    {
+        Assert.Throws<System.ArgumentException>(() => NetworkConfigurationService.EscapeAdapterName(adapterName));
+    }
+
     [Fact]
     public void BuildSetStaticIpCommand_DefaultValues_ProducesCorrectSyntax()
     {

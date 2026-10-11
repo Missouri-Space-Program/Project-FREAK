@@ -5,6 +5,24 @@ namespace Project_FREAK.Controllers;
 
 public static class CubicSplineIntegrator
 {
+    public static (double Integral, double Average) IntegrateAndAverage(
+        IReadOnlyList<double> time,
+        IReadOnlyList<double> values)
+    {
+        double integral = Integrate(time, values);
+        if (values.Count == 0)
+            return (integral, 0);
+
+        double duration = time.Count > 1 ? time[^1] - time[0] : 0;
+        if (duration > 0)
+            return (integral, integral / duration);
+
+        double sum = 0;
+        for (int index = 0; index < values.Count; index++)
+            sum += values[index];
+        return (integral, sum / values.Count);
+    }
+
     public static double Integrate(IReadOnlyList<double> time, IReadOnlyList<double> values)
     {
         ArgumentNullException.ThrowIfNull(time);

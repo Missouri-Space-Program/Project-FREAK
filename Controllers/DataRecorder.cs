@@ -86,7 +86,7 @@ namespace Project_FREAK.Controllers
         }
 
         // Exports the collected data to final JSON format
-        public void ExportToJson(string finalPath, string? videoPath = null)
+        public void ExportToJson(string finalPath, string? videoPath = null, string? recordingFailure = null)
         {
             bool exported = false;
             try
@@ -177,6 +177,10 @@ namespace Project_FREAK.Controllers
                                 writer.WriteString("video_path", videoPath);
                             else
                                 writer.WriteNull("video_path");
+
+                            writer.WriteString("recording_status", string.IsNullOrWhiteSpace(recordingFailure) ? "complete" : "failed");
+                            if (!string.IsNullOrWhiteSpace(recordingFailure))
+                                writer.WriteString("recording_error", recordingFailure);
 
                             writer.WriteEndObject();
                             writer.Flush();

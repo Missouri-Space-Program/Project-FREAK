@@ -34,6 +34,30 @@ namespace Project_FREAK.Tests.Tests
             Assert.True(doc.RootElement.TryGetProperty("time_values_seconds", out _));
             Assert.True(doc.RootElement.TryGetProperty("thrust_values_N", out _));
             Assert.Equal("burn.mp4", doc.RootElement.GetProperty("video_path").GetString());
+            Assert.Equal("complete", doc.RootElement.GetProperty("recording_status").GetString());
+        }
+
+        [Fact]
+        public void ExportToJson_MarksFailedRecordingAndPreservesFailureReason()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), $"dr_failed_{Guid.NewGuid()}");
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var dr = new DataRecorder();
+                dr.AddDataPoint(0.5, 1.5, 2.5, 3.5, 4.5);
+                string path = Path.Combine(folder, "failed.json");
+                dr.ExportToJson(path, recordingFailure: "LabJack stream read failed.");
+
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                Assert.Equal("failed", doc.RootElement.GetProperty("recording_status").GetString());
+                Assert.Equal("LabJack stream read failed.", doc.RootElement.GetProperty("recording_error").GetString());
+            }
+            finally
+            {
+                if (Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+            }
         }
 
         [Fact]

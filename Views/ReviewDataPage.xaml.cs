@@ -262,29 +262,24 @@ public partial class ReviewDataPage : Page
     private static string FormatStatistics(string heading, IReadOnlyList<double> time, IReadOnlyList<double> thrust, IReadOnlyList<double> pressure)
     {
         double duration = time.Count > 1 ? time[^1] - time[0] : 0;
-        double thrustSum = 0;
         double thrustMax = double.NegativeInfinity;
         for (int i = 0; i < thrust.Count; i++)
         {
             double v = thrust[i];
-            thrustSum += v;
             if (v > thrustMax) thrustMax = v;
         }
-        double averageThrust = thrust.Count > 0 ? thrustSum / thrust.Count : 0;
         double maximumThrust = thrust.Count > 0 ? thrustMax : 0;
+        (double totalImpulse, double averageThrust) = CubicSplineIntegrator.IntegrateAndAverage(time, thrust);
 
-        double pressureSum = 0;
         double pressureMax = double.NegativeInfinity;
         for (int i = 0; i < pressure.Count; i++)
         {
             double v = pressure[i];
-            pressureSum += v;
             if (v > pressureMax) pressureMax = v;
         }
-        double averagePressure = pressure.Count > 0 ? pressureSum / pressure.Count : 0;
         double maximumPressure = pressure.Count > 0 ? pressureMax : 0;
+        var (_, averagePressure) = CubicSplineIntegrator.IntegrateAndAverage(time, pressure);
 
-        double totalImpulse = CubicSplineIntegrator.Integrate(time, thrust);
         string motorDesignation = MotorDesignation.Format(totalImpulse, averageThrust);
 
         return $"{heading}\nSamples: {time.Count}    Duration: {duration:F2} s\n" +

@@ -22,7 +22,7 @@ namespace Project_FREAK
         }
         protected override void OnExit(ExitEventArgs e)
         {
-            LabJackManager.Instance.CloseDevice(); //close device when done with app
+            LabJackManager.Instance.Dispose(); //close device when done with app
             base.OnExit(e);
         }
     }

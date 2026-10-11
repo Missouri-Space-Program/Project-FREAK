@@ -26,6 +26,7 @@ public partial class GeneralSettingsPage : Page
     private double _latestPressureVoltage;
     private bool _hasLiveSample;
     private bool _isInitializing = true;
+    private bool _calibrationNeedsRecalculation;
 
     public GeneralSettingsPage()
     {
@@ -137,8 +138,21 @@ public partial class GeneralSettingsPage : Page
         }
     }
 
+    private bool RejectWhileRecording(TextBlock statusText)
+    {
+        if (!_settingsManager.IsLockedForRecording)
+            return false;
+
+        statusText.Text = "This operation is unavailable while a recording is in progress.";
+        statusText.Foreground = Brushes.Orange;
+        return true;
+    }
+
     private void ReconnectButton_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectWhileRecording(NetworkStatusText))
+            return;
+
         DeviceStatusText.Text = "Reconnecting…";
         _labJackManager.ReconnectDevice();
         UpdateDeviceStatus();
@@ -207,6 +221,9 @@ public partial class GeneralSettingsPage : Page
 
     private async void ConfigureStaticIpButton_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectWhileRecording(NetworkStatusText))
+            return;
+
         if (NetworkAdaptersComboBox.SelectedItem is not NetworkConfigurationService.AdapterInfo adapter)
         {
             NetworkStatusText.Text = "Please select a network adapter to configure.";
@@ -250,6 +267,9 @@ public partial class GeneralSettingsPage : Page
 
     private async void RestoreDhcpButton_Click(object sender, RoutedEventArgs e)
     {
+        if (RejectWhileRecording(NetworkStatusText))
+            return;
+
         if (NetworkAdaptersComboBox.SelectedItem is not NetworkConfigurationService.AdapterInfo adapter)
         {
             NetworkStatusText.Text = "Please select a network adapter to restore.";
@@ -332,6 +352,7 @@ public partial class GeneralSettingsPage : Page
         }
 
         _calculatedCalibration = null;
+        _calibrationNeedsRecalculation = true;
         LoadCellCalibrationStatus.Text = "Sample captured. Capture the other known load, then calculate.";
     }
 
@@ -369,6 +390,7 @@ public partial class GeneralSettingsPage : Page
             _pendingSettings.LoadCellPoint2WeightKg = _point2.Value.weightKg;
             _pendingSettings.LoadCellPoint2BridgeVoltage = _point2.Value.bridgeVoltage;
             _pendingSettings.LoadCellPoint2ExcitationVoltage = _point2.Value.excitationVoltage;
+            _calibrationNeedsRecalculation = false;
             LoadCellCalibrationStatus.Text = $"Calibration calculated (slope {_calculatedCalibration.Value.Slope:G6}, offset {_calculatedCalibration.Value.Offset:G6}). Apply to use it live.";
             UpdateLiveDisplays();
         }
@@ -437,6 +459,12 @@ public partial class GeneralSettingsPage : Page
 
     private bool UpdatePendingSettings()
     {
+        if (_calibrationNeedsRecalculation)
+        {
+            LoadCellCalibrationStatus.Text = "Recalculate the load-cell calibration before applying or saving settings.";
+            return false;
+        }
+
         if (!TryReadPositive(LoadCellFullScaleValueTextBox.Text, out double loadCellFullScaleValue) ||
             LoadCellFullScaleUnitComboBox.SelectedItem is not string loadCellFullScaleUnit)
         {
@@ -497,11 +525,8 @@ public partial class GeneralSettingsPage : Page
 
     private void ApplyButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_settingsManager.IsLockedForRecording)
-        {
-            SettingsStatusText.Text = "Settings are locked while a recording is in progress.";
+        if (RejectWhileRecording(SettingsStatusText))
             return;
-        }
 
         if (!UpdatePendingSettings())
             return;
@@ -512,11 +537,8 @@ public partial class GeneralSettingsPage : Page
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_settingsManager.IsLockedForRecording)
-        {
-            SettingsStatusText.Text = "Settings are locked while a recording is in progress.";
+        if (RejectWhileRecording(SettingsStatusText))
             return;
-        }
 
         if (!UpdatePendingSettings())
             return;

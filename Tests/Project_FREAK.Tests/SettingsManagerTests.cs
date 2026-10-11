@@ -103,6 +103,28 @@ namespace Project_FREAK.Tests
             Assert.Equal(15, mgr.AppliedSettings.LiveGraphWindowSeconds);
         }
 
+        [Theory]
+        [InlineData("AIN6", "AIN0", "AIN0", "AIN5")]
+        [InlineData("AIN0", "AIN0", "AIN0", "AIN5")]
+        [InlineData("AIN5", "AIN6", "AIN5", "AIN0")]
+        [InlineData("AIN5", "AIN5", "AIN5", "AIN0")]
+        public void UpdateAppliedSettings_ReservesExcitationAndSeparatesSensorChannels(
+            string pressureChannel,
+            string loadCellChannel,
+            string expectedPressureChannel,
+            string expectedLoadCellChannel)
+        {
+            var mgr = CreateManager();
+            mgr.UpdateAppliedSettings(new SettingsManager.SettingsData
+            {
+                PressureInputChannel = pressureChannel,
+                LoadCellInputChannel = loadCellChannel
+            });
+
+            Assert.Equal(expectedPressureChannel, mgr.AppliedSettings.PressureInputChannel);
+            Assert.Equal(expectedLoadCellChannel, mgr.AppliedSettings.LoadCellInputChannel);
+        }
+
         [Fact]
         public void UpdateAppliedSettings_NormalizesInvalidLoadCellRangeAndConvertsNewtons()
         {

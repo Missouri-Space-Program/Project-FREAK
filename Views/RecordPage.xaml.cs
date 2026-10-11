@@ -27,6 +27,7 @@ namespace Project_FREAK.Views
         private const int graphFPS = 30;
         private string? _currentSessionFolder;
         private string? _currentVideoPath;
+        private string? _recordingFailureReason;
 
         public RecordPage()
         {
@@ -75,6 +76,7 @@ namespace Project_FREAK.Views
             Unloaded += RecordPage_Unloaded;
             _labjackManager.DataUpdated += UpdateGraphs;
             _labjackManager.BatchDataUpdated += OnBatchDataUpdated;
+            _labjackManager.StreamingFailed += OnStreamingFailed;
             _countdownService.CountdownUpdated += UpdateCountdownDisplay;
             _countdownService.CountdownFinished += HandleCountdownCompletion;
 
@@ -176,6 +178,26 @@ namespace Project_FREAK.Views
                     }
                 }));
             }
+        }
+
+        private void OnStreamingFailed(string message)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(() =>
+            {
+                _recordingFailureReason = message;
+                LoadingTextBlock.Text = $"Sensor acquisition failed: {message}";
+                LoadingTextBlock.Visibility = Visibility.Visible;
+
+                if (_isRecording)
+                {
+                    StopTestAndSave(showPrompt: false);
+                    MessageBox.Show(
+                        $"Sensor acquisition failed. Recording stopped; partial data will be marked failed in the exported JSON.\n\n{message}",
+                        "Recording failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }));
         }
 
         // Updates the countdown display
@@ -313,7 +335,7 @@ namespace Project_FREAK.Views
                 {
                     try
                     {
-                        _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath());
+                        _dataRecorder.ExportToJson(jsonPath, GetRelativeVideoPath(), _recordingFailureReason);
                         break;
                     }
                     catch (Exception ex)
@@ -357,13 +379,13 @@ namespace Project_FREAK.Views
             _stopwatch.Reset();
             _webcamManager.Dispose();
             _labjackManager.StopStreaming();
-            _labjackManager.Dispose();
             _countdownService.Dispose();
 
             // Unsubscribe events
             ((App)Application.Current).SettingsManager.AppliedSettingsChanged -= SettingsChangedHandler;
             _labjackManager.DataUpdated -= UpdateGraphs;
             _labjackManager.BatchDataUpdated -= OnBatchDataUpdated;
+            _labjackManager.StreamingFailed -= OnStreamingFailed;
         }
 
         // Handles settings changes
@@ -415,6 +437,7 @@ namespace Project_FREAK.Views
 
                 _dataRecorder.StartRecording(_currentSessionFolder);
                 _isRecording = true;
+                _recordingFailureReason = null;
                 ((App)Application.Current).SettingsManager.SetRecordingLock(true);
                 var appliedSettings = ((App)Application.Current).SettingsManager.AppliedSettings;
                 _labjackManager.StartStreaming(appliedSettings.SamplingRateHz);

@@ -20,6 +20,7 @@ namespace Project_FREAK.Controllers
         public event Action<double, double, double, double> DataUpdated = delegate { }; // Event triggered when data is updated
         public event Action<DataPointRecord[]> BatchDataUpdated = delegate { }; // Event triggered when a streaming batch is available
         public event Action<double, double> LoadCellCalibrationSampleUpdated = delegate { };
+        public event Action<string>? StreamingFailed;
         public event EventHandler? ConnectionStatusChanged;
         public bool IsStreaming => _isStreaming;
         private SettingsManager.SettingsData _calibrationSettings = new();
@@ -198,6 +199,11 @@ namespace Project_FREAK.Controllers
                         else
                             RunHardwareStreamingLoop(rateHz, token);
                     }
+                    catch (Exception exception)
+                    {
+                        if (!token.IsCancellationRequested)
+                            StreamingFailed?.Invoke($"Sensor acquisition failed: {exception.Message}");
+                    }
                     finally
                     {
                         EndStreamingAfterUnexpectedExit(token);
@@ -245,7 +251,7 @@ namespace Project_FREAK.Controllers
             ctsToDispose?.Dispose();
         }
 
-        // Ends the session when a stream loop exits without a stop request, then resumes idle reads.
+        // Leave idle polling stopped after a failed stream so a recording cannot silently change time bases.
         private void EndStreamingAfterUnexpectedExit(CancellationToken token)
         {
             lock (_deviceLock)
@@ -256,7 +262,6 @@ namespace Project_FREAK.Controllers
                 _streamingCts?.Dispose();
                 _streamingCts = null;
                 _streamingTask = null;
-                StartReading();
             }
         }
 
@@ -272,7 +277,7 @@ namespace Project_FREAK.Controllers
 
             if (handle <= 0)
             {
-                RunDemoStreamingLoop(rateHz, token);
+                StreamingFailed?.Invoke("The LabJack device is no longer available.");
                 return;
             }
 
@@ -293,8 +298,7 @@ namespace Project_FREAK.Controllers
             int startErr = (int)LJM.eStreamStart(handle, scansPerRead, 3, aScanList, ref scanRate);
             if (startErr != 0)
             {
-                Console.WriteLine($"Failed to start LabJack hardware stream: {startErr}. Falling back to demo generator.");
-                RunDemoStreamingLoop(rateHz, token);
+                StreamingFailed?.Invoke($"Failed to start LabJack hardware stream: {startErr}.");
                 return;
             }
 
@@ -312,7 +316,10 @@ namespace Project_FREAK.Controllers
                     if (readErr != 0)
                     {
                         if (_isStreaming)
+                        {
                             Console.WriteLine($"LabJack eStreamRead error: {readErr}");
+                            StreamingFailed?.Invoke($"LabJack stream read failed: {readErr}.");
+                        }
                         break;
                     }
 
@@ -345,6 +352,8 @@ namespace Project_FREAK.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception in hardware streaming loop: {ex.Message}");
+                if (_isStreaming && !token.IsCancellationRequested)
+                    StreamingFailed?.Invoke($"LabJack stream failed: {ex.Message}");
             }
             finally
             {
@@ -420,6 +429,8 @@ namespace Project_FREAK.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception in demo streaming loop: {ex.Message}");
+                if (_isStreaming && !token.IsCancellationRequested)
+                    StreamingFailed?.Invoke($"Demo data stream failed: {ex.Message}");
             }
         }
 

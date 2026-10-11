@@ -117,10 +117,14 @@ public class SettingsManager : INotifyPropertyChanged
 
         public SettingsData NormalizeChannels()
         {
-            if (!IsAnalogInputChannel(PressureInputChannel))
+            if (!IsAnalogInputChannel(PressureInputChannel) || PressureInputChannel == "AIN6")
                 PressureInputChannel = "AIN0";
-            if (!IsAnalogInputChannel(LoadCellInputChannel))
-                LoadCellInputChannel = "AIN5";
+            if (!IsAnalogInputChannel(LoadCellInputChannel) ||
+                LoadCellInputChannel == "AIN6" ||
+                LoadCellInputChannel == PressureInputChannel)
+            {
+                LoadCellInputChannel = PressureInputChannel == "AIN5" ? "AIN0" : "AIN5";
+            }
             if (IgniterOutputChannel is not ("DAC0" or "DAC1"))
                 IgniterOutputChannel = "DAC0";
             if (!double.IsFinite(LoadCellFullScaleValue) || LoadCellFullScaleValue <= 0)

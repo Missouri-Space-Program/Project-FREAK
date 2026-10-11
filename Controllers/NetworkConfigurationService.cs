@@ -129,7 +129,11 @@ public class NetworkConfigurationService
 
     public static string EscapeAdapterName(string adapterName)
     {
-        return adapterName.Replace("\"", string.Empty).Trim();
+        var cleanName = adapterName.Replace("\"", string.Empty).Trim();
+        if (cleanName.IndexOfAny(new[] { '&', '|', '<', '>', '%', '^', '!', '\r', '\n' }) >= 0)
+            throw new ArgumentException("Adapter names cannot contain command metacharacters.", nameof(adapterName));
+
+        return cleanName;
     }
 
     public static string BuildSetStaticIpCommand(

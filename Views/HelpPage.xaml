@@ -30,7 +30,7 @@
                         <TextBlock Text="Record a test" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <TextBlock Text="1. Before testing, check Settings for the LabJack connection status and confirm the sensor channels and calibration are correct. If Settings reports SIMULATION, the readings are simulated; do not use them as live hardware measurements or for hardware calibration." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
                         <TextBlock Text="2. On the Record page, select Arm. The control changes to Disarm when armed. Only arm and start a motor test when the test stand is prepared and the area is clear, following your lab's approved procedure." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="3. Select Start. A five-second countdown runs before ignition and recording begin. Select Stop Recording to end the test; sensor data is saved automatically. Save Data can also export a JSON snapshot during an active recording." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <TextBlock Text="3. Select Start. A five-second countdown runs before ignition and recording begin. Select Stop Recording to end the test; sensor data is saved automatically." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
                         <TextBlock Text="4. Sessions are saved in a timestamped folder under Documents\\RocketTests. Video recording is included when the camera is available; a camera error does not prevent sensor data from recording." Foreground="#D0D0D0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>

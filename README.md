@@ -21,6 +21,7 @@ App / MainWindow
 				├── ReviewDataLoader ── JSON and sensor-value conversion
 				├── CubicSplineIntegrator / MotorDesignation ── run metrics
 				└── ScottPlot and WPF media player ── plots and video
+```
 
 SettingsManager stores applied and saved settings. SensorCalibration converts sensor voltage to engineering units, and NetworkConfigurationService can configure a selected Windows network adapter for the test stand.
 

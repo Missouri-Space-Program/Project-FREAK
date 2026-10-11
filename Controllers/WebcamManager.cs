@@ -250,13 +250,14 @@ namespace Project_FREAK.Controllers
         {
             if (_recordingQueue != null)
             {
-                _recordingQueue.CompleteAdding();
+                var recordingQueue = _recordingQueue;
+                recordingQueue.CompleteAdding();
                 try
                 {
-                    _recordingTask?.Wait(5000);
+                    _recordingTask?.GetAwaiter().GetResult();
                 }
                 catch { }
-                _recordingQueue.Dispose();
+                recordingQueue.Dispose();
                 _recordingQueue = null;
                 _recordingTask = null;
             }
