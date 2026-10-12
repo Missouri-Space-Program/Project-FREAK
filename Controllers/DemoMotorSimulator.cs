@@ -31,8 +31,8 @@ public sealed class DemoMotorSimulator
             _ => 0
         };
 
-        double thrust = Math.Clamp(burnFraction * thrustFullScaleNewtons + Noise(thrustFullScaleNewtons * 0.015), 0, thrustFullScaleNewtons);
-        double pressure = Math.Clamp(burnFraction * pressureFullScalePsi + Noise(pressureFullScalePsi * 0.015), 0, pressureFullScalePsi);
+        double thrust = Math.Clamp(burnFraction * thrustFullScaleNewtons + Noise(thrustFullScaleNewtons * 0.015 * burnFraction), 0, thrustFullScaleNewtons);
+        double pressure = Math.Clamp(burnFraction * pressureFullScalePsi + Noise(pressureFullScalePsi * 0.015 * burnFraction), 0, pressureFullScalePsi);
         return new DemoMotorReading(thrust, pressure);
     }
 

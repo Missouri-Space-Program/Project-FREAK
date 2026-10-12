@@ -116,12 +116,12 @@ public static class ReviewDataLoader
                 .Select(voltage => SensorCalibration.LoadKilograms(
                     calibration,
                     (voltage - 1.25) / 201,
-                    calibration.ExcitationReferenceVoltage) * 9.81)
+                    calibration.ExcitationReferenceVoltage) * SensorCalibration.StandardGravityMetersPerSecondSquared)
                 .ToArray();
         }
 
         return rawThrust
-            .Select(voltage => (100387.5 * ((voltage - 1.25) / 201) - 3.8069375) * 9.81)
+            .Select(voltage => (100387.5 * ((voltage - 1.25) / 201) - 3.8069375) * SensorCalibration.StandardGravityMetersPerSecondSquared)
             .ToArray();
     }
 

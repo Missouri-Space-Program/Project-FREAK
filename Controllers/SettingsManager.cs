@@ -117,7 +117,7 @@ public class SettingsManager : INotifyPropertyChanged
         public SettingsData Clone() => (SettingsData)MemberwiseClone();
 
         public double GetLoadCellFullScaleNewtons() =>
-            LoadCellFullScaleUnit == "N" ? LoadCellFullScaleValue : LoadCellFullScaleValue * 9.80665;
+            LoadCellFullScaleUnit == "N" ? LoadCellFullScaleValue : LoadCellFullScaleValue * SensorCalibration.StandardGravityMetersPerSecondSquared;
 
         public SettingsData NormalizeChannels()
         {

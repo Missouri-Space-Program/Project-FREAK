@@ -107,7 +107,7 @@ public partial class GeneralSettingsPage : Page
         {
             lock (_sampleLock)
             {
-                _latestLoadKg = calibratedLoad / 9.81;
+                _latestLoadKg = calibratedLoad / SensorCalibration.StandardGravityMetersPerSecondSquared;
                 _latestPressureVoltage = pressureVoltage;
                 LoadCellLiveText.Text = $"{thrustVoltage:F5} V  |  {_latestLoadKg:F3} kg ({calibratedLoad:F2} N)";
                 PressureLiveText.Text = $"{pressureVoltage:F4} V  |  {pressure:F2} PSI";
@@ -430,7 +430,7 @@ public partial class GeneralSettingsPage : Page
             if (_calculatedCalibration is { } calibration && _hasLiveSample && _latestExcitationVoltage > 0)
                 loadKg = SensorCalibration.LoadKilograms(calibration, _latestBridgeVoltage, _latestExcitationVoltage);
         }
-        LoadCellResultText.Text = $"Current calibrated load: {loadKg:F3} kg ({loadKg * 9.81:F2} N)";
+        LoadCellResultText.Text = $"Current calibrated load: {loadKg:F3} kg ({loadKg * SensorCalibration.StandardGravityMetersPerSecondSquared:F2} N)";
 
         if (TryReadPressureScale(out double zeroVoltage, out double fullScaleVoltage, out double fullScaleValue))
         {

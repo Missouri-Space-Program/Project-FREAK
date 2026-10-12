@@ -48,6 +48,17 @@ public class DemoMotorSimulatorTests
     }
 
     [Fact]
+    public void Sample_IdleDoesNotCreatePositiveNoiseBias()
+    {
+        var simulator = new DemoMotorSimulator(new Random(42));
+
+        var reading = simulator.Sample(11);
+
+        Assert.Equal(0, reading.ThrustNewtons);
+        Assert.Equal(0, reading.PressurePsi);
+    }
+
+    [Fact]
     public void Sample_RejectsInvalidElapsedTime()
     {
         var simulator = new DemoMotorSimulator(new Random(42));

@@ -4,6 +4,11 @@ public static class MotorDesignation
 {
     public static string Format(double totalImpulseNewtonSeconds, double averageThrustNewtons)
     {
+        if (!double.IsFinite(totalImpulseNewtonSeconds) || !double.IsFinite(averageThrustNewtons))
+            return "Unclassified (invalid impulse or average thrust)";
+        if (totalImpulseNewtonSeconds <= 1.25)
+            return $"Unclassified (below A range; {averageThrustNewtons:F0} N average thrust)";
+
         char? impulseClass = totalImpulseNewtonSeconds switch
         {
             <= 2.5 => 'A',

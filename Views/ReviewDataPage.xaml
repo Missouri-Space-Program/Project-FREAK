@@ -14,6 +14,7 @@
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                 <Button Content="Open Data JSON" Padding="12,7" Click="OpenJsonButton_Click"/>
                 <Button Content="Choose Video" Padding="12,7" Margin="8,0,0,0" Click="OpenVideoButton_Click"/>
+                <Button x:Name="ExportEngButton" Content="Export .eng" Padding="12,7" Margin="8,0,0,0" IsEnabled="False" Click="ExportEngButton_Click" ToolTip="Export test data in RASP / RockSim .eng format over the selected interval"/>
             </StackPanel>
             <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
                 <TextBlock x:Name="ReviewStatusText" Text="Choose a saved test JSON file to begin." Foreground="White" TextWrapping="Wrap"/>

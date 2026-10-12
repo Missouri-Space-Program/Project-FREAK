@@ -40,9 +40,9 @@ public class ReviewDataLoaderTests
             string conversionDescription = dataset.ConversionDescription;
 
             Assert.Equal(new[] { 0d, 1d, 2d }, dataset.TimeSeconds);
-            Assert.Equal(39.24, dataset.ThrustNewtons[0], 6);
-            Assert.Equal(49.05, dataset.ThrustNewtons[1], 6);
-            Assert.Equal(58.86, dataset.ThrustNewtons[2], 6);
+            Assert.Equal(4 * SensorCalibration.StandardGravityMetersPerSecondSquared, dataset.ThrustNewtons[0], 6);
+            Assert.Equal(5 * SensorCalibration.StandardGravityMetersPerSecondSquared, dataset.ThrustNewtons[1], 6);
+            Assert.Equal(6 * SensorCalibration.StandardGravityMetersPerSecondSquared, dataset.ThrustNewtons[2], 6);
             Assert.Equal(0, dataset.PressurePsi[0], 6);
             Assert.Equal(50, dataset.PressurePsi[1], 6);
             Assert.Equal(100, dataset.PressurePsi[2], 6);
@@ -113,7 +113,7 @@ public class ReviewDataLoaderTests
             Assert.Equal(new[] { 0d, 1d }, dataset.TimeSeconds);
             Assert.Equal(2, dataset.ThrustNewtons.Length);
             Assert.Equal(2, dataset.PressurePsi.Length);
-            Assert.Equal((100387.5 * ((1.25 - 1.25) / 201) - 3.8069375) * 9.81, dataset.ThrustNewtons[0], 6);
+            Assert.Equal((100387.5 * ((1.25 - 1.25) / 201) - 3.8069375) * SensorCalibration.StandardGravityMetersPerSecondSquared, dataset.ThrustNewtons[0], 6);
             Assert.Equal(0, dataset.PressurePsi[0], 6);
             Assert.Equal(800, dataset.PressurePsi[1], 6);
             Assert.Contains("legacy load-cell calibration", dataset.ConversionDescription);

@@ -5,6 +5,8 @@ public readonly record struct LoadCellCalibration(double Slope, double Offset, d
 
 public static class SensorCalibration
 {
+    public const double StandardGravityMetersPerSecondSquared = 9.80665;
+
     public static LoadCellCalibration FitLoadCell(
         double weight1Kg,
         double bridgeVoltage1,

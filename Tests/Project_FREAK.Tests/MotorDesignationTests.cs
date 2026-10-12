@@ -24,4 +24,13 @@ public class MotorDesignationTests
 
         Assert.Contains("Unclassified", designation);
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1.25)]
+    [InlineData(-1)]
+    public void Format_DoesNotAssignAClassBelowMinimumImpulse(double impulse)
+    {
+        Assert.Contains("Unclassified", MotorDesignation.Format(impulse, 10));
+    }
 }

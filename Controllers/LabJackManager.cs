@@ -413,7 +413,7 @@ namespace Project_FREAK.Controllers
                             settings.GetLoadCellFullScaleNewtons(),
                             settings.PressureFullScaleValue);
 
-                        double loadKg = reading.ThrustNewtons / 9.80665;
+                        double loadKg = reading.ThrustNewtons / SensorCalibration.StandardGravityMetersPerSecondSquared;
                         bool useCalibratedDemoSignal = settings.LoadCellCalibrationEnabled &&
                             double.IsFinite(settings.LoadCellCalibrationSlope) &&
                             Math.Abs(settings.LoadCellCalibrationSlope) > 1e-12 &&
@@ -483,7 +483,7 @@ namespace Project_FREAK.Controllers
             {
                 calibratedLoadKg = 100387.5 * loadAdjVoltage - 3.8069375;
             }
-            calibratedLoad = calibratedLoadKg * 9.80665; // Convert kg to N using standard gravity
+            calibratedLoad = calibratedLoadKg * SensorCalibration.StandardGravityMetersPerSecondSquared;
 
             pressure = SensorCalibration.ScalePressure(
                 pressureVoltage,
@@ -550,7 +550,7 @@ namespace Project_FREAK.Controllers
                         elapsedSeconds,
                         settings.GetLoadCellFullScaleNewtons(),
                         settings.PressureFullScaleValue);
-                    double loadKg = reading.ThrustNewtons / 9.80665;
+                    double loadKg = reading.ThrustNewtons / SensorCalibration.StandardGravityMetersPerSecondSquared;
                     bool useCalibratedDemoSignal = settings.LoadCellCalibrationEnabled &&
                         double.IsFinite(settings.LoadCellCalibrationSlope) &&
                         Math.Abs(settings.LoadCellCalibrationSlope) > 1e-12 &&

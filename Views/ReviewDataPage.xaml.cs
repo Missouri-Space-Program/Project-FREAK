@@ -71,6 +71,7 @@ public partial class ReviewDataPage : Page
             _loadedJsonPath = jsonPath;
             var settings = ((App)Application.Current).SettingsManager.AppliedSettings;
             _dataset = ReviewDataLoader.Load(jsonPath, settings);
+            ExportEngButton.IsEnabled = true;
             ConfigureIntervalSelection();
             RenderGraphs();
             UpdateStatistics();
@@ -80,8 +81,25 @@ public partial class ReviewDataPage : Page
         }
         catch (Exception exception)
         {
+            ExportEngButton.IsEnabled = false;
             ReviewStatusText.Text = $"Unable to load data: {exception.Message}";
             ConversionNoticeText.Text = string.Empty;
+        }
+    }
+
+    private void ExportEngButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_dataset is null)
+            return;
+
+        var dialog = new RaspExportDialog(_dataset, _intervalStartSeconds, _intervalEndSeconds, _loadedJsonPath)
+        {
+            Owner = Window.GetWindow(this)
+        };
+
+        if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.ExportedFilePath))
+        {
+            ConversionNoticeText.Text = $"Successfully exported RASP motor data to {Path.GetFileName(dialog.ExportedFilePath)}.";
         }
     }
 
@@ -115,13 +133,8 @@ public partial class ReviewDataPage : Page
         ThrustPlot.Plot.Axes.Bottom.Label.Text = "Time (s)";
         ThrustPlot.Plot.Axes.Left.Label.Text = "Thrust (N)";
         ThrustPlot.Plot.Axes.AutoScale();
-        var settings = ((App)Application.Current).SettingsManager.AppliedSettings;
-        double thrustMinimum = Math.Min(0, _dataset.ThrustNewtons.Min());
-        if (thrustMinimum < 0)
-            thrustMinimum *= 1.05;
-        double thrustFullScale = settings.GetLoadCellFullScaleNewtons();
-        double thrustMaximum = _dataset.ThrustNewtons.Max();
-        ThrustPlot.Plot.Axes.SetLimitsY(thrustMinimum, thrustMaximum > thrustFullScale ? thrustMaximum * 1.05 : thrustFullScale);
+        var thrustLimits = GetYAxisLimits(_dataset.ThrustNewtons.Min(), _dataset.ThrustNewtons.Max());
+        ThrustPlot.Plot.Axes.SetLimitsY(thrustLimits.Minimum, thrustLimits.Maximum);
         _thrustStartLine = AddIntervalLine(ThrustPlot, _intervalStartSeconds, ScottPlot.Colors.Green);
         _thrustEndLine = AddIntervalLine(ThrustPlot, _intervalEndSeconds, ScottPlot.Colors.Red);
         ThrustPlot.Refresh();
@@ -134,17 +147,24 @@ public partial class ReviewDataPage : Page
         PressurePlot.Plot.Axes.Bottom.Label.Text = "Time (s)";
         PressurePlot.Plot.Axes.Left.Label.Text = "Pressure (PSI)";
         PressurePlot.Plot.Axes.AutoScale();
-        double pressureMinimum = Math.Min(0, _dataset.PressurePsi.Min());
-        if (pressureMinimum < 0)
-            pressureMinimum *= 1.05;
-        double pressureFullScale = double.IsFinite(settings.PressureFullScaleValue) && settings.PressureFullScaleValue > 0
-            ? settings.PressureFullScaleValue
-            : 1600;
-        double pressureMaximum = _dataset.PressurePsi.Max();
-        PressurePlot.Plot.Axes.SetLimitsY(pressureMinimum, pressureMaximum > pressureFullScale ? pressureMaximum * 1.05 : pressureFullScale);
+        var pressureLimits = GetYAxisLimits(_dataset.PressurePsi.Min(), _dataset.PressurePsi.Max());
+        PressurePlot.Plot.Axes.SetLimitsY(pressureLimits.Minimum, pressureLimits.Maximum);
         _pressureStartLine = AddIntervalLine(PressurePlot, _intervalStartSeconds, ScottPlot.Colors.Green);
         _pressureEndLine = AddIntervalLine(PressurePlot, _intervalEndSeconds, ScottPlot.Colors.Red);
         PressurePlot.Refresh();
+    }
+
+    internal static (double Minimum, double Maximum) GetYAxisLimits(double observedMinimum, double observedMaximum)
+    {
+        double minimum = Math.Min(0, observedMinimum);
+        if (minimum < 0)
+            minimum *= 1.05;
+
+        double maximum = observedMaximum > 0
+            ? observedMaximum * 1.05
+            : observedMinimum == 0 ? 1 : 0;
+
+        return (minimum, maximum);
     }
 
     private static ScottPlot.Plottables.VerticalLine AddIntervalLine(
@@ -241,48 +261,68 @@ public partial class ReviewDataPage : Page
 
         double start = _intervalStartSeconds;
         double end = _intervalEndSeconds;
-
-        int startIndex = Array.BinarySearch(time, start);
-        if (startIndex < 0) startIndex = ~startIndex;
-        int endIndex = Array.BinarySearch(time, end);
-        if (endIndex < 0) endIndex = Math.Max(startIndex, ~endIndex - 1);
-        if (startIndex >= time.Length || endIndex < startIndex)
+        if (time.Length < 2 || !double.IsFinite(start) || !double.IsFinite(end) ||
+            start >= end || start < time[0] || end > time[^1])
         {
             IntervalStatsText.Text = "Selected interval\nNo samples in this interval.";
             return;
         }
 
-        int count = endIndex - startIndex + 1;
-        var selectedTime = new ArraySegment<double>(time, startIndex, count);
-        var selectedThrust = new ArraySegment<double>(thrust, startIndex, count);
-        var selectedPressure = new ArraySegment<double>(pressure, startIndex, count);
-        IntervalStatsText.Text = FormatStatistics("Selected interval", selectedTime, selectedThrust, selectedPressure);
+        int selectedSampleCount = time.Count(sampleTime => sampleTime >= start && sampleTime <= end);
+        IntervalStatsText.Text = FormatStatistics("Selected interval", time, thrust, pressure, selectedSampleCount, start, end);
     }
 
-    private static string FormatStatistics(string heading, IReadOnlyList<double> time, IReadOnlyList<double> thrust, IReadOnlyList<double> pressure)
+    private static string FormatStatistics(
+        string heading,
+        IReadOnlyList<double> time,
+        IReadOnlyList<double> thrust,
+        IReadOnlyList<double> pressure,
+        int? sampleCount = null,
+        double? intervalStartSeconds = null,
+        double? intervalEndSeconds = null)
     {
-        double duration = time.Count > 1 ? time[^1] - time[0] : 0;
-        double thrustMax = double.NegativeInfinity;
-        for (int i = 0; i < thrust.Count; i++)
+        double duration = intervalStartSeconds.HasValue && intervalEndSeconds.HasValue
+            ? intervalEndSeconds.Value - intervalStartSeconds.Value
+            : time.Count > 1 ? time[^1] - time[0] : 0;
+        IReadOnlyList<double> statsTime = time;
+        IReadOnlyList<double> statsThrust = thrust;
+        IReadOnlyList<double> statsPressure = pressure;
+        if (intervalStartSeconds.HasValue && intervalEndSeconds.HasValue)
         {
-            double v = thrust[i];
+            (double[] selectedTime, double[] selectedThrust) = CubicSplineIntegrator.ClipInterval(
+                time, thrust, intervalStartSeconds.Value, intervalEndSeconds.Value);
+            (_, double[] selectedPressure) = CubicSplineIntegrator.ClipInterval(
+                time, pressure, intervalStartSeconds.Value, intervalEndSeconds.Value);
+            statsTime = selectedTime;
+            statsThrust = selectedThrust;
+            statsPressure = selectedPressure;
+        }
+
+        double thrustMax = double.NegativeInfinity;
+        for (int i = 0; i < statsThrust.Count; i++)
+        {
+            double v = statsThrust[i];
             if (v > thrustMax) thrustMax = v;
         }
-        double maximumThrust = thrust.Count > 0 ? thrustMax : 0;
-        (double totalImpulse, double averageThrust) = CubicSplineIntegrator.IntegrateAndAverage(time, thrust);
+        double maximumThrust = statsThrust.Count > 0 ? thrustMax : 0;
+        (double totalImpulse, double averageThrust) = intervalStartSeconds.HasValue && intervalEndSeconds.HasValue
+            ? CubicSplineIntegrator.IntegrateAndAverage(time, thrust, intervalStartSeconds.Value, intervalEndSeconds.Value)
+            : CubicSplineIntegrator.IntegrateAndAverage(time, thrust);
 
         double pressureMax = double.NegativeInfinity;
-        for (int i = 0; i < pressure.Count; i++)
+        for (int i = 0; i < statsPressure.Count; i++)
         {
-            double v = pressure[i];
+            double v = statsPressure[i];
             if (v > pressureMax) pressureMax = v;
         }
-        double maximumPressure = pressure.Count > 0 ? pressureMax : 0;
-        var (_, averagePressure) = CubicSplineIntegrator.IntegrateAndAverage(time, pressure);
+        double maximumPressure = statsPressure.Count > 0 ? pressureMax : 0;
+        var (_, averagePressure) = intervalStartSeconds.HasValue && intervalEndSeconds.HasValue
+            ? CubicSplineIntegrator.IntegrateAndAverage(time, pressure, intervalStartSeconds.Value, intervalEndSeconds.Value)
+            : CubicSplineIntegrator.IntegrateAndAverage(time, pressure);
 
         string motorDesignation = MotorDesignation.Format(totalImpulse, averageThrust);
 
-        return $"{heading}\nSamples: {time.Count}    Duration: {duration:F2} s\n" +
+        return $"{heading}\nSamples: {sampleCount ?? time.Count}    Duration: {duration:F2} s\n" +
                $"Average thrust: {averageThrust:F2} N    Peak thrust: {maximumThrust:F2} N\n" +
                $"Average pressure: {averagePressure:F2} PSI    Peak pressure: {maximumPressure:F2} PSI\n" +
                $"Total impulse: {totalImpulse:F2} N·s\n" +

@@ -39,7 +39,23 @@
                     <StackPanel>
                         <TextBlock Text="Review a saved test" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
                         <TextBlock Text="1. Choose Open Data JSON and select a saved session's JSON file. The thrust and pressure graphs and session statistics will load. A matching video is opened automatically when its file is available; otherwise, choose Choose Video." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="2. Use Play/Pause and the slider to inspect the video. Drag the green START or red END line on either graph to select a time interval; the interval statistics update as you adjust it. The overall statistics continue to describe the full recording." Foreground="#D0D0D0" TextWrapping="Wrap"/>
+                        <TextBlock Text="2. Use Play/Pause and the slider to inspect the video. Drag the green START or red END line on either graph to select a time interval; the interval statistics update as you adjust it. The overall statistics continue to describe the full recording." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <TextBlock Text="3. Select Export .eng to export the thrust curve to the standard RASP / RockSim motor data format. A prompt will appear allowing you to adjust the burn interval and specify physical motor parameters." Foreground="#D0D0D0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#292929" Padding="18" Margin="0,0,0,12" CornerRadius="6">
+                    <StackPanel>
+                        <TextBlock Text="Exporting to RASP / RockSim format (.eng)" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Text="The RASP / .eng file format is the standard rocket motor data interchange format used by flight simulators such as OpenRocket, RockSim, and ThrustCurve.org." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <TextBlock Text="• Burn Interval: The exported thrust curve is normalized to begin at t = 0 with intermediate thrust values and ends with a 0 N point at burn completion. You can use your graph selection, full recording, or manually type start and end times in seconds." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <TextBlock Text="• Motor Parameters: Because the test stand only measures thrust, pressure, and time, the export dialog prompts you for the remaining physical parameters required by the RASP specification:" Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <TextBlock Text="    - Motor Name: Defaults to the calculated NAR/TRA designation (e.g. F32) from the interval's total impulse and average thrust, or enter a custom name." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <TextBlock Text="    - Casing Dimensions: Outer diameter and length in millimeters (mm)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <TextBlock Text="    - Delays: Available ejection delay times separated by dashes (e.g. '4-8-12'), '0' for none, or 'P' for plugged (no ejection charge)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <TextBlock Text="    - Propellant &amp; Total Mass: Mass of consumables and total loaded flight mass in kilograms (kg)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <TextBlock Text="    - Manufacturer Code: Short identifier (e.g. MSP, AT, CTI, EST)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <TextBlock Text="• Data Resolution: Choose standard resolution (up to 500 points — recommended for modern simulators), compact (100 points), classic RASP (max 32 points for vintage tools), or full recorded resolution. Peak thrust is automatically preserved." Foreground="#D0D0D0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
