@@ -41,6 +41,9 @@ public class LabJackManagerTests
                 Assert.True(double.IsFinite(batch[i].Pressure));
                 Assert.True(double.IsFinite(batch[i].ThrustVoltage));
                 Assert.True(double.IsFinite(batch[i].PressureVoltage));
+                double excitationVoltage = batch[i].ExcitationVoltage.GetValueOrDefault();
+                Assert.True(double.IsFinite(excitationVoltage));
+                Assert.True(excitationVoltage > 0);
             }
         }
         finally

@@ -130,6 +130,6 @@ Installing a new version removes the previously installed version first. Recorde
 
 ## Recorded Data
 
-Each test is written beneath `Documents/RocketTests/<timestamp>/`. A session contains a JSON file with time, thrust, pressure, and raw sensor-voltage arrays; an MP4 is included when camera recording is available. The JSON stores a relative video filename so the video can be found alongside its data file.
+Each test is written beneath `Documents/RocketTests/<timestamp>/`. A session contains a JSON file with time, thrust, pressure, and raw sensor-voltage arrays, including LJTick amplifier output in volts as `load_cell_amplifier_output_voltages_v`; an MP4 is included when camera recording is available. The JSON stores a relative video filename so the video can be found alongside its data file.
 
-Review uses the stored engineering-unit values by default. Enabling raw-data review recalculates values from the recorded voltages and the currently applied calibration settings; load-cell excitation voltage is not recorded for each sample, so raw recalculation uses the calibration reference excitation.
+Review uses the stored engineering-unit values by default. New recordings also store each load-cell excitation sample in `load_cell_excitation_voltages_v`; raw-data review uses those per-sample values with the currently applied calibration settings. Older JSON files using the legacy `load_cell_voltages_mv` key remain supported, and files without per-sample excitation use the calibration reference excitation instead.

@@ -11,7 +11,7 @@ namespace Project_FREAK.Tests.Tests
         public void AddDataPoint_AppendsToAllLists()
         {
             var dr = new DataRecorder();
-            dr.AddDataPoint(1.0, 2.0, 3.0, 4.0, 5.0);
+            dr.AddDataPoint(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
 
             Assert.Single(dr.TimeData);
             Assert.Equal(1.0, dr.TimeData[0]);
@@ -19,13 +19,14 @@ namespace Project_FREAK.Tests.Tests
             Assert.Equal(3.0, dr.PressureData[0]);
             Assert.Equal(4.0, dr.RawThrustVoltages[0]);
             Assert.Equal(5.0, dr.RawPressureVoltages[0]);
+            Assert.Equal(6.0, dr.RawExcitationVoltages[0]);
         }
 
         [Fact]
         public void ExportToJson_CreatesValidFile()
         {
             var dr = new DataRecorder();
-            dr.AddDataPoint(0.5, 1.5, 2.5, 3.5, 4.5);
+            dr.AddDataPoint(0.5, 1.5, 2.5, 3.5, 4.5, 5.5);
 
             var tmp = Path.GetTempFileName();
             dr.ExportToJson(tmp, "burn.mp4");
@@ -33,6 +34,9 @@ namespace Project_FREAK.Tests.Tests
             using var doc = JsonDocument.Parse(File.ReadAllText(tmp));
             Assert.True(doc.RootElement.TryGetProperty("time_values_seconds", out _));
             Assert.True(doc.RootElement.TryGetProperty("thrust_values_N", out _));
+            Assert.True(doc.RootElement.TryGetProperty("load_cell_amplifier_output_voltages_v", out _));
+            Assert.False(doc.RootElement.TryGetProperty("load_cell_voltages_mv", out _));
+            Assert.Equal(5.5, doc.RootElement.GetProperty("load_cell_excitation_voltages_v")[0].GetDouble());
             Assert.Equal("burn.mp4", doc.RootElement.GetProperty("video_path").GetString());
             Assert.Equal("complete", doc.RootElement.GetProperty("recording_status").GetString());
         }
@@ -106,6 +110,7 @@ namespace Project_FREAK.Tests.Tests
             Assert.Equal(0.002, dr.TimeData[1]);
             Assert.Equal(10.0, dr.ThrustData[0]);
             Assert.Equal(20.0, dr.ThrustData[1]);
+            Assert.Equal(new double?[] { null, null }, dr.RawExcitationVoltages);
         }
 
         [Fact]
@@ -161,7 +166,7 @@ namespace Project_FREAK.Tests.Tests
                         double t = index * 0.001;
                         double thrust = 500.0 * Math.Sin(t * Math.PI);
                         double pressure = 200.0 * Math.Sin(t * Math.PI);
-                        batch[i] = new DataPointRecord(t, Math.Max(0, thrust), Math.Max(0, pressure), 1.25, 0.5);
+                        batch[i] = new DataPointRecord(t, Math.Max(0, thrust), Math.Max(0, pressure), 1.25, 0.5, 3.0);
                     }
                     dr.AddDataPoints(batch);
                 }
@@ -177,6 +182,8 @@ namespace Project_FREAK.Tests.Tests
                 Assert.Equal(1000, dataset.PressurePsi.Length);
                 Assert.Equal(0.0, dataset.TimeSeconds[0]);
                 Assert.Equal(0.999, dataset.TimeSeconds[^1], 3);
+                using var document = JsonDocument.Parse(File.ReadAllText(jsonPath));
+                Assert.Equal(3.0, document.RootElement.GetProperty("load_cell_excitation_voltages_v")[0].GetDouble());
 
                 double impulse = CubicSplineIntegrator.Integrate(dataset.TimeSeconds, dataset.ThrustNewtons);
                 Assert.True(impulse > 0);

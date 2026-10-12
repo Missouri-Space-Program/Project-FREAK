@@ -12,7 +12,8 @@ namespace Project_FREAK.Controllers
         double Thrust,
         double Pressure,
         double ThrustVoltage,
-        double PressureVoltage
+        double PressureVoltage,
+        double? ExcitationVoltage = null
     );
 
     public class DataRecorder : IDisposable
@@ -23,6 +24,7 @@ namespace Project_FREAK.Controllers
         public List<double> PressureData { get; } = new();
         public List<double> RawThrustVoltages { get; } = new();
         public List<double> RawPressureVoltages { get; } = new();
+        public List<double?> RawExcitationVoltages { get; } = new();
 
         private readonly object _syncLock = new();
         private Channel<DataPointRecord>? _channel;
@@ -34,14 +36,15 @@ namespace Project_FREAK.Controllers
             double thrust,
             double pressure,
             double thrustVoltage,
-            double pressureVoltage
+            double pressureVoltage,
+            double? excitationVoltage = null
         );
 
         // Adds a data point to the lists
         public void AddDataPoint(double time, double thrust, double pressure,
-                               double thrustVoltage, double pressureVoltage)
+                       double thrustVoltage, double pressureVoltage, double? excitationVoltage = null)
         {
-            var record = new DataPointRecord(time, thrust, pressure, thrustVoltage, pressureVoltage);
+            var record = new DataPointRecord(time, thrust, pressure, thrustVoltage, pressureVoltage, excitationVoltage);
             lock (_syncLock)
             {
                 TimeData.Add(time);
@@ -49,6 +52,7 @@ namespace Project_FREAK.Controllers
                 PressureData.Add(pressure);
                 RawThrustVoltages.Add(thrustVoltage);
                 RawPressureVoltages.Add(pressureVoltage);
+                RawExcitationVoltages.Add(excitationVoltage);
 
                 _channel?.Writer.TryWrite(record);
             }
@@ -69,6 +73,7 @@ namespace Project_FREAK.Controllers
                     PressureData.Capacity = newCapacity;
                     RawThrustVoltages.Capacity = newCapacity;
                     RawPressureVoltages.Capacity = newCapacity;
+                    RawExcitationVoltages.Capacity = newCapacity;
                 }
 
                 for (int i = 0; i < points.Length; i++)
@@ -79,6 +84,7 @@ namespace Project_FREAK.Controllers
                     PressureData.Add(p.Pressure);
                     RawThrustVoltages.Add(p.ThrustVoltage);
                     RawPressureVoltages.Add(p.PressureVoltage);
+                    RawExcitationVoltages.Add(p.ExcitationVoltage);
 
                     _channel?.Writer.TryWrite(p);
                 }
@@ -101,6 +107,7 @@ namespace Project_FREAK.Controllers
                         List<double> pressures;
                         List<double> rawThrusts;
                         List<double> rawPressures;
+                        List<double?> rawExcitations;
 
                         lock (_syncLock)
                         {
@@ -111,6 +118,7 @@ namespace Project_FREAK.Controllers
                                 pressures = new List<double>(PressureData);
                                 rawThrusts = new List<double>(RawThrustVoltages);
                                 rawPressures = new List<double>(RawPressureVoltages);
+                                rawExcitations = new List<double?>(RawExcitationVoltages);
                             }
                             else if (_tempDataPath != null && File.Exists(_tempDataPath))
                             {
@@ -119,6 +127,7 @@ namespace Project_FREAK.Controllers
                                 pressures = new();
                                 rawThrusts = new();
                                 rawPressures = new();
+                                rawExcitations = new();
 
                                 using var reader = new StreamReader(_tempDataPath, Encoding.UTF8);
                                 string? line;
@@ -133,6 +142,7 @@ namespace Project_FREAK.Controllers
                                         pressures.Add(dp.pressure);
                                         rawThrusts.Add(dp.thrustVoltage);
                                         rawPressures.Add(dp.pressureVoltage);
+                                        rawExcitations.Add(dp.excitationVoltage);
                                     }
                                 }
                             }
@@ -143,6 +153,7 @@ namespace Project_FREAK.Controllers
                                 pressures = new();
                                 rawThrusts = new();
                                 rawPressures = new();
+                                rawExcitations = new();
                             }
                         }
 
@@ -165,9 +176,16 @@ namespace Project_FREAK.Controllers
                             for (int idx = 0; idx < pressures.Count; idx++) writer.WriteNumberValue(pressures[idx]);
                             writer.WriteEndArray();
 
-                            writer.WriteStartArray("load_cell_voltages_mv");
+                            writer.WriteStartArray("load_cell_amplifier_output_voltages_v");
                             for (int idx = 0; idx < rawThrusts.Count; idx++) writer.WriteNumberValue(rawThrusts[idx]);
                             writer.WriteEndArray();
+
+                            if (rawExcitations.Count == times.Count && rawExcitations.All(value => value.HasValue && double.IsFinite(value.Value)))
+                            {
+                                writer.WriteStartArray("load_cell_excitation_voltages_v");
+                                for (int idx = 0; idx < rawExcitations.Count; idx++) writer.WriteNumberValue(rawExcitations[idx]!.Value);
+                                writer.WriteEndArray();
+                            }
 
                             writer.WriteStartArray("pressure_transducer_voltages_v");
                             for (int idx = 0; idx < rawPressures.Count; idx++) writer.WriteNumberValue(rawPressures[idx]);
@@ -224,6 +242,7 @@ namespace Project_FREAK.Controllers
                 PressureData.Clear();
                 RawThrustVoltages.Clear();
                 RawPressureVoltages.Clear();
+                RawExcitationVoltages.Clear();
 
                 _tempDataPath = Path.Combine(sessionFolder, $"temp_data_{Guid.NewGuid()}.jsonl");
                 _channel = Channel.CreateUnbounded<DataPointRecord>(new UnboundedChannelOptions
@@ -259,6 +278,11 @@ namespace Project_FREAK.Controllers
                         writer.Write(item.ThrustVoltage.ToString("R", CultureInfo.InvariantCulture));
                         writer.Write(",\"pressureVoltage\":");
                         writer.Write(item.PressureVoltage.ToString("R", CultureInfo.InvariantCulture));
+                        if (item.ExcitationVoltage is double excitationVoltage)
+                        {
+                            writer.Write(",\"excitationVoltage\":");
+                            writer.Write(excitationVoltage.ToString("R", CultureInfo.InvariantCulture));
+                        }
                         writer.WriteLine('}');
                     }
                     await writer.FlushAsync().ConfigureAwait(false);

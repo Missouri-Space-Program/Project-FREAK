@@ -2,71 +2,216 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       Background="#1E1E1E">
-    <Grid Margin="32">
+    <Page.Resources>
+        <Style x:Key="TopicButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#D7D7D7"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#383838"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SectionHeadingStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="21"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+        <Style x:Key="BodyTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#D4D4D4"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,0,0,9"/>
+        </Style>
+        <Style x:Key="SubheadingStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#8FD5C5"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,5,0,6"/>
+        </Style>
+        <Style x:Key="TopicSectionStyle" TargetType="Border">
+            <Setter Property="Background" Value="#292929"/>
+            <Setter Property="BorderBrush" Value="#3A3A3A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0" Margin="0,0,0,20">
+        <DockPanel Grid.Row="0" Margin="0,0,0,18">
             <Button DockPanel.Dock="Right" Content="Back to start" Padding="14,8" Click="BackToStartButton_Click"/>
             <StackPanel>
-                <TextBlock Text="How to use Project FREAK" Foreground="White" FontSize="30" FontWeight="Bold"/>
-                <TextBlock Text="Record a test, inspect its data, and configure the test stand." Foreground="#BDBDBD" FontSize="16" Margin="0,5,0,0"/>
+                <TextBlock Text="Project FREAK operator guide" Foreground="White" FontSize="29" FontWeight="Bold"/>
+                <TextBlock Text="Set up the test stand, record a run, review measurements, and export a motor curve." Foreground="#BDBDBD" FontSize="15" Margin="0,5,0,0" TextWrapping="Wrap"/>
             </StackPanel>
         </DockPanel>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel MaxWidth="1000" HorizontalAlignment="Left">
-                <Border Background="#292929" Padding="18" Margin="0,0,0,12" CornerRadius="6">
-                    <StackPanel>
-                        <TextBlock Text="Choose a task" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock Text="Record a Test opens the live sensor graphs and camera view. Review Recorded Data opens a saved test session. Settings is available here and from the menu at the top of the main window; Help is also available from that menu." Foreground="#D0D0D0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="190"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <Border Background="#292929" Padding="18" Margin="0,0,0,12" CornerRadius="6">
-                    <StackPanel>
-                        <TextBlock Text="Record a test" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock Text="1. Before testing, check Settings for the LabJack connection status and confirm the sensor channels and calibration are correct. If Settings reports SIMULATION, the readings are simulated; do not use them as live hardware measurements or for hardware calibration." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="2. On the Record page, select Arm. The control changes to Disarm when armed. Only arm and start a motor test when the test stand is prepared and the area is clear, following your lab's approved procedure." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="3. Select Start. A five-second countdown runs before ignition and recording begin. Select Stop Recording to end the test; sensor data is saved automatically." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="4. Sessions are saved in a timestamped folder under Documents\\RocketTests. Video recording is included when the camera is available; a camera error does not prevent sensor data from recording." Foreground="#D0D0D0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+            <Border Grid.Column="0" Background="#252525" BorderBrush="#383838" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,16,0" VerticalAlignment="Top">
+                <StackPanel>
+                    <TextBlock Text="GUIDE CONTENTS" Foreground="#8FD5C5" FontSize="11" FontWeight="Bold" Margin="10,4,0,8"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="First run" Tag="BasicsSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Record a test" Tag="RecordSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Review data" Tag="ReviewSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Understand results" Tag="StatisticsSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Export .eng" Tag="ExportSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Settings" Tag="SettingsSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Sensor calibration" Tag="CalibrationSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Files and recovery" Tag="FilesSection" Click="TopicButton_Click"/>
+                    <Button Style="{StaticResource TopicButtonStyle}" Content="Troubleshooting" Tag="TroubleshootingSection" Click="TopicButton_Click"/>
+                    <Border Background="#3A2D20" CornerRadius="3" Padding="10" Margin="2,14,2,2">
+                        <StackPanel>
+                            <TextBlock Text="HARDWARE SAFETY" Foreground="#F2C078" FontWeight="Bold" Margin="0,0,0,5"/>
+                            <TextBlock Text="FREAK can command the configured igniter output. Follow your lab's approved test-stand and range procedures; this guide is not a substitute for them." Foreground="#E1D6C6" FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
 
-                <Border Background="#292929" Padding="18" Margin="0,0,0,12" CornerRadius="6">
-                    <StackPanel>
-                        <TextBlock Text="Review a saved test" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock Text="1. Choose Open Data JSON and select a saved session's JSON file. The thrust and pressure graphs and session statistics will load. A matching video is opened automatically when its file is available; otherwise, choose Choose Video." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="2. Use Play/Pause and the slider to inspect the video. Drag the green START or red END line on either graph to select a time interval; the interval statistics update as you adjust it. The overall statistics continue to describe the full recording." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="3. Select Export .eng to export the thrust curve to the standard RASP / RockSim motor data format. A prompt will appear allowing you to adjust the burn interval and specify physical motor parameters." Foreground="#D0D0D0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+            <ScrollViewer x:Name="HelpScrollViewer" Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel MaxWidth="1120" HorizontalAlignment="Left">
+                    <Border x:Name="BasicsSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="1. First run: know what the app is connected to" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="The start page offers Record a Test, Review Recorded Data, Settings, and Help. The menu across the top remains available as you move between pages. Settings opens in its own window." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Before a hardware test" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Open Settings and verify the LabJack status, the live load-cell and pressure readings, the sensor channel assignments, and the calibration values. Confirm that the values and units make sense for the sensors and wiring used on your stand." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="SIMULATION means no LabJack connection was detected. The app supplies simulated sensor readings so you can explore recording and review, but those readings are not measurements from the stand. Never use simulation for a real test or for sensor calibration." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Apply uses valid settings for the current session. Save applies them and stores them for later launches. While recording, Apply and Save, reconnect, and network-configuration actions are blocked so the active run keeps one consistent configuration." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Direct Ethernet connection" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="If the PC connects directly to the stand over Ethernet, select the wired adapter in Settings and choose Set Test Stand IP (192.168.20.2). Windows may ask for administrator approval. The PC uses 192.168.20.2, the LabJack 192.168.20.3, and the camera 192.168.20.4. When finished, select the same adapter and choose Reset to DHCP (Automatic) if that is how your network is normally configured." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
 
-                <Border Background="#292929" Padding="18" Margin="0,0,0,12" CornerRadius="6">
-                    <StackPanel>
-                        <TextBlock Text="Exporting to RASP / RockSim format (.eng)" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock Text="The RASP / .eng file format is the standard rocket motor data interchange format used by flight simulators such as OpenRocket, RockSim, and ThrustCurve.org." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="• Burn Interval: The exported thrust curve is normalized to begin at t = 0 with intermediate thrust values and ends with a 0 N point at burn completion. You can use your graph selection, full recording, or manually type start and end times in seconds." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="• Motor Parameters: Because the test stand only measures thrust, pressure, and time, the export dialog prompts you for the remaining physical parameters required by the RASP specification:" Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="    - Motor Name: Defaults to the calculated NAR/TRA designation (e.g. F32) from the interval's total impulse and average thrust, or enter a custom name." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                        <TextBlock Text="    - Casing Dimensions: Outer diameter and length in millimeters (mm)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                        <TextBlock Text="    - Delays: Available ejection delay times separated by dashes (e.g. '4-8-12'), '0' for none, or 'P' for plugged (no ejection charge)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                        <TextBlock Text="    - Propellant &amp; Total Mass: Mass of consumables and total loaded flight mass in kilograms (kg)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                        <TextBlock Text="    - Manufacturer Code: Short identifier (e.g. MSP, AT, CTI, EST)." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="• Data Resolution: Choose standard resolution (up to 500 points — recommended for modern simulators), compact (100 points), classic RASP (max 32 points for vintage tools), or full recorded resolution. Peak thrust is automatically preserved." Foreground="#D0D0D0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+                    <Border x:Name="RecordSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="2. Record a test" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="The Record page shows live thrust and pressure graphs, a camera preview, and the Arm/Disarm and Start controls. The configured sampling rate controls sensor acquisition; the live graph window controls how much recent history is displayed." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Run sequence" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="1. Complete the approved physical test-stand checks first. Confirm the LabJack reports connected (not SIMULATION), sensor values are plausible, and the camera preview is ready if video is needed." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="2. Select Arm. The control changes to Disarm, and Start becomes available. Arm only when the stand is prepared and the area is clear under your lab's procedures." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="3. Select Start. A five-second countdown begins. Disarming during the countdown cancels it. At zero, the app sends the ignition command to the configured DAC output and starts collecting sensor data." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="4. While recording, Start changes to Stop Recording. Select it when the run is complete. The app stops acquisition, closes the optional video recording, and writes the session JSON. Disarming while recording also stops the run and saves it." Style="{StaticResource BodyTextStyle}"/>
+                            <Border Background="#3A2D20" CornerRadius="3" Padding="12" Margin="0,2,0,8">
+                                <TextBlock Text="Camera recording is optional. If the camera is unavailable, sensor acquisition can still proceed; the Record page displays a camera error and the saved session will have no video. A sensor-acquisition failure stops the run and saves available partial data with a failed status." Foreground="#E1D6C6" TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
 
-                <Border Background="#292929" Padding="18" Margin="0,0,0,12" CornerRadius="6">
-                    <StackPanel>
-                        <TextBlock Text="Settings and setup" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBlock Text="Apply uses changes for the current session; Save also stores them for future sessions. Settings includes hardware channels, sensor calibration, and the option to recalculate review data from raw sensor voltages. Calibration requires two different known loads and real sensor readings." Foreground="#D0D0D0" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                        <TextBlock Text="For a direct Ethernet connection to the test stand, Settings can configure the selected adapter to 192.168.20.2. Restore that adapter to DHCP when testing is finished. Changing network configuration may request administrator approval." Foreground="#D0D0D0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-        </ScrollViewer>
+                    <Border x:Name="ReviewSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="3. Review a saved test" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="Choose Review Recorded Data from the start page or Review Data from the top menu. Select Open Data JSON and open the session's .json file. The thrust and pressure plots, statistics, and any matching video are loaded." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="The JSON file is the required part of a session. If its video is missing or cannot be found, select Choose Video and browse to an MP4. Use Play/Pause to control playback and the slider to seek." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="The green START and red END lines mark the selected time interval. Drag either line on either graph; both plots share the same interval. The selected-interval statistics update as the lines move, while the overall statistics continue to cover the complete recording." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="The conversion notice below the file status identifies the values being plotted. By default, review uses the engineering-unit values stored in the JSON. Raw-data review can instead recalculate thrust and pressure using the currently applied calibration; see Settings before comparing results from different calibration configurations." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="StatisticsSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="4. Understand the review results" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="The lower area of the Review page reports the entire recording and the selected interval separately. Each summary includes sample count, duration, average and peak thrust, average and peak pressure, total impulse, and a calculated motor designation." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Thrust is shown in newtons (N), pressure in pounds per square inch (PSI), time in seconds (s), and total impulse in newton-seconds (N·s). Total impulse is the area under the thrust-versus-time curve for the stated interval. The motor designation is calculated from that interval's impulse and average thrust; treat it as a data-derived designation, not a substitute for motor certification or manufacturer specifications." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Use the full-recording summary for the complete run. Use the graph interval when you want to isolate a burn window or exclude pre-test/post-test portions; the interval will also be the initial selection for .eng export." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="ExportSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="5. Export a RASP / RockSim motor file" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="Load a JSON session, set the desired interval on the graphs, then choose Export .eng. In the dialog, Use Graph Selection copies the current graph interval; Use Full Recording uses the first and last recorded times. You can also enter Start and End in seconds. The interval must lie within the recording, End must be later than Start, and the interval must contain positive thrust." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Choose the data resolution: Standard keeps up to 500 points, Compact up to 100, Classic RASP up to 32, or Full resolution keeps all recorded samples. When simplifying the curve, the export preserves its peak-thrust point. Exported time is shifted so the chosen interval starts at 0 seconds and ends with a zero-thrust point." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Enter the motor information that the test stand cannot measure:" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="- Motor name/designation: initially calculated from the selected thrust interval; you can replace it with your own name." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="- Manufacturer code: a short identifier such as MSP, AT, CTI, or EST." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="- Delays: use P for plugged/no ejection charge, 0 for none, or list delays separated by dashes, such as 4-8-12." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="- Casing diameter and length: positive values in millimeters (mm)." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="- Propellant mass and total loaded motor mass: positive values in kilograms (kg). For example, enter 0.050 for 50 grams. Total motor mass cannot be less than propellant mass." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="- Notes are optional. Choose Export .eng, then select a destination and filename in the save dialog. Export creates a separate file; it does not change the source JSON." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="SettingsSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="6. Settings reference" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="LabJack connection and live sensors" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="The status reports LabJack connected or SIMULATION. Reconnect retries hardware detection. Live values show input voltage and the converted load or pressure, which is useful for checking whether a sensor responds before a run." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Hardware channel assignments" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Choose the AIN wired to each sensor and the DAC wired to the igniter circuit. Pressure and load-cell signals must use different AIN channels. AIN6 is reserved for load-cell excitation-voltage feedback and is not offered as a sensor input. Select the sampling rate (100, 250, 500, 1000, or 2000 Hz) and live graph window (5, 10, 15, 30, or 60 seconds) to suit the test and display." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Load-cell rated capacity sets the live thrust graph range; values above that rating remain visible. Choose kg or N to match the sensor's rated capacity." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Review data source" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="With Recalculate review data from raw sensor voltages unchecked, the app uses the unitized thrust and pressure saved in the JSON. When checked, it recalculates saved curves using the currently applied calibration. New recordings include per-sample load-cell excitation; older JSON files without it use the calibration reference excitation. Applying or saving the setting reloads an open review. Raw review does not rewrite the original JSON." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="CalibrationSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="7. Sensor calibration" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="Calibration changes the engineering values derived from sensor voltages. Use sensor documentation and known references; incorrect calibration produces plausible-looking but incorrect test results. Do not calculate a calibration from SIMULATION readings." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Load cell: two-point calibration" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Use two different known masses or equivalent reference forces. Apply each steadily along the load cell's sensing axis, in the same direction and arrangement as the test load. Enter the mass in kilograms, wait for the live signal to settle, and select Capture first load or Capture second load. The captured point pairs the entered mass with the live bridge and excitation readings." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="After both points are captured, choose Calculate calibration. Then choose Apply to use it now or Save to use it now and retain it for future sessions. If you change a captured mass, capture that point again and recalculate before applying or saving." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Pressure sensor: linear scaling" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Enter the sensor output voltage at zero pressure, its output voltage at full scale, and the pressure represented by that full-scale voltage. The full-scale voltage must be higher than the zero voltage, and full-scale pressure must be positive. Use the sensor datasheet or a known pressure reference. The defaults are 0.5 V to 4.5 V for 0 to 1600 PSI." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="FilesSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="8. Session files and save recovery" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="Each run is written to a timestamped folder under Documents\\RocketTests. The JSON contains time, thrust, pressure, raw sensor voltages, recording status, and a relative video filename when a video was captured. An MP4 is present only when camera recording succeeded." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="To review a session, open its JSON file. Keep the JSON and any MP4 together so the app can find the associated video. You can still open the JSON if the video is absent." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="If saving fails, the app keeps the recorded data and offers Retry Save. Retry before starting another run; the current session must be saved before a new one can begin. If sensor acquisition fails, the available partial run is saved with a failed status and the error is reported." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Navigating away from the Record page or closing the app stops an active run and attempts to save it. Prefer using Stop Recording so you can see the save confirmation and verify whether video was included." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="TroubleshootingSection" Style="{StaticResource TopicSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="9. Troubleshooting" Style="{StaticResource SectionHeadingStyle}"/>
+                            <TextBlock Text="Settings says SIMULATION" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="FREAK did not detect a LabJack and is displaying generated readings. Check the LabJack power, USB/Ethernet connection, and selected test-stand adapter; then choose Reconnect. Do not arm or use these values for a live test or hardware calibration." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="The camera preview or video is missing" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Sensor recording can continue without a camera. Check the camera network connection and test-stand Ethernet setup. For review, choose Choose Video and select the session MP4 if it exists." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="A live sensor value looks wrong" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Verify that each sensor is assigned to its physically wired AIN, the two sensor channels differ, the load-cell calibration uses two known loads, and the pressure endpoints match the sensor documentation. Apply valid settings and confirm the live voltage as well as the converted value." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="A review file will not load" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Open the session's JSON rather than the MP4. A valid review file must contain time, thrust, and pressure arrays with ascending time values. If raw-data review reports invalid calibration, disable raw-data review or correct and apply the calibration settings, then reopen the JSON." Style="{StaticResource BodyTextStyle}"/>
+                            <TextBlock Text="Export is unavailable or reports an error" Style="{StaticResource SubheadingStyle}"/>
+                            <TextBlock Text="Load a JSON first. Keep the export interval inside the recorded time range and make sure it includes positive thrust. Check that casing dimensions and both masses are positive, units are mm and kg, and total motor mass is at least the propellant mass." Style="{StaticResource BodyTextStyle}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
     </Grid>
 </Page>

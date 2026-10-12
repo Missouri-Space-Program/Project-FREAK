@@ -52,8 +52,50 @@ public class ReviewDataLoaderTests
             Assert.Contains("slope 100", conversionDescription);
             Assert.Contains("offset 2", conversionDescription);
             Assert.Contains("reference excitation 2.5 V", conversionDescription);
+            Assert.Contains("no per-sample excitation series", conversionDescription);
             Assert.Contains("zero 1 V", conversionDescription);
             Assert.Contains("full scale 5 V = 100 PSI", conversionDescription);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public void Load_UsesPerSampleExcitationVoltageForRawThrust()
+    {
+        string folder = CreateTemporaryFolder();
+        try
+        {
+            string jsonPath = Path.Combine(folder, "data.json");
+            File.WriteAllText(jsonPath, """
+                {
+                  "time_values_seconds": [0, 1, 2],
+                  "thrust_values_N": [10, 20, 30],
+                  "pressure_values_PSI": [100, 200, 300],
+                  "load_cell_amplifier_output_voltages_v": [5.27, 7.28, 9.29],
+                  "load_cell_excitation_voltages_v": [1.25, 5.0, 2.5],
+                  "pressure_transducer_voltages_v": [1, 3, 5]
+                }
+                """);
+
+            var settings = new SettingsManager.SettingsData
+            {
+                UseRawDataForReview = true,
+                LoadCellCalibrationEnabled = true,
+                LoadCellCalibrationSlope = 100,
+                LoadCellCalibrationOffset = 2,
+                LoadCellCalibrationExcitationVoltage = 2.5
+            };
+
+            var dataset = ReviewDataLoader.Load(jsonPath, settings);
+
+            Assert.Equal(6 * SensorCalibration.StandardGravityMetersPerSecondSquared, dataset.ThrustNewtons[0], 6);
+            Assert.Equal(3.5 * SensorCalibration.StandardGravityMetersPerSecondSquared, dataset.ThrustNewtons[1], 6);
+            Assert.Equal(6 * SensorCalibration.StandardGravityMetersPerSecondSquared, dataset.ThrustNewtons[2], 6);
+            Assert.Contains("per-sample excitation voltages", dataset.ConversionDescription);
+            Assert.DoesNotContain("no per-sample excitation series", dataset.ConversionDescription);
         }
         finally
         {

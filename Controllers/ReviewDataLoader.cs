@@ -31,13 +31,15 @@ public static class ReviewDataLoader
 
         double[] time = ReadArray(root, "time_values_seconds")
             ?? throw new InvalidDataException("The JSON file does not contain time_values_seconds.");
-        double[]? rawThrust = ReadArray(root, "load_cell_voltages_mv");
+        double[]? rawThrust = ReadArray(root, "load_cell_amplifier_output_voltages_v")
+            ?? ReadArray(root, "load_cell_voltages_mv");
         double[]? rawPressure = ReadArray(root, "pressure_transducer_voltages_v");
+        double[]? rawExcitation = ReadArray(root, "load_cell_excitation_voltages_v");
         double[]? storedThrust = ReadArray(root, "thrust_values_N");
         double[]? storedPressure = ReadArray(root, "pressure_values_PSI");
         bool useRawThrust = settings.UseRawDataForReview && rawThrust is { Length: > 0 };
         bool useRawPressure = settings.UseRawDataForReview && rawPressure is { Length: > 0 };
-        double[]? thrust = useRawThrust ? ConvertRawThrust(rawThrust!, settings) : storedThrust;
+        double[]? thrust = useRawThrust ? ConvertRawThrust(rawThrust!, rawExcitation, settings) : storedThrust;
         double[]? pressure = useRawPressure
             ? rawPressure!
                 .Select(voltage => SensorCalibration.ScalePressure(
@@ -52,7 +54,9 @@ public static class ReviewDataLoader
         if (useRawThrust)
         {
             conversions.Add(settings.LoadCellCalibrationEnabled
-                ? $"raw load-cell values use applied calibration settings: slope {FormatSetting(settings.LoadCellCalibrationSlope)}, offset {FormatSetting(settings.LoadCellCalibrationOffset)}, reference excitation {FormatSetting(settings.LoadCellCalibrationExcitationVoltage)} V (sample excitation is not stored in the JSON)"
+                ? rawExcitation is { Length: > 0 }
+                    ? $"raw load-cell values use applied calibration settings: slope {FormatSetting(settings.LoadCellCalibrationSlope)}, offset {FormatSetting(settings.LoadCellCalibrationOffset)}, and per-sample excitation voltages"
+                    : $"raw load-cell values use applied calibration settings: slope {FormatSetting(settings.LoadCellCalibrationSlope)}, offset {FormatSetting(settings.LoadCellCalibrationOffset)}, reference excitation {FormatSetting(settings.LoadCellCalibrationExcitationVoltage)} V (this JSON has no per-sample excitation series)"
                 : "raw load-cell values use the legacy load-cell calibration (no applied load-cell calibration is enabled)");
         }
         else if (storedThrust is not null)
@@ -95,7 +99,10 @@ public static class ReviewDataLoader
                 : $"Data source (default): {string.Join("; ", conversions)}. Unitized JSON values are used; enable raw-data mode in General Settings to recalculate from sensor voltages.");
     }
 
-    private static double[] ConvertRawThrust(double[] rawThrust, SettingsManager.SettingsData settings)
+    private static double[] ConvertRawThrust(
+        double[] rawThrust,
+        double[]? rawExcitation,
+        SettingsManager.SettingsData settings)
     {
         if (settings.LoadCellCalibrationEnabled)
         {
@@ -112,12 +119,25 @@ public static class ReviewDataLoader
                 settings.LoadCellCalibrationOffset,
                 settings.LoadCellCalibrationExcitationVoltage);
 
-            return rawThrust
-                .Select(voltage => SensorCalibration.LoadKilograms(
+            int sampleCount = rawExcitation is { Length: > 0 }
+                ? Math.Min(rawThrust.Length, rawExcitation.Length)
+                : rawThrust.Length;
+            var thrustNewtons = new double[sampleCount];
+            for (int index = 0; index < sampleCount; index++)
+            {
+                double excitationVoltage = rawExcitation is { Length: > 0 }
+                    ? rawExcitation[index]
+                    : calibration.ExcitationReferenceVoltage;
+                if (!double.IsFinite(excitationVoltage) || excitationVoltage <= 0)
+                    throw new InvalidDataException($"The load-cell excitation voltage at sample {index} must be positive and finite.");
+
+                thrustNewtons[index] = SensorCalibration.LoadKilograms(
                     calibration,
-                    (voltage - 1.25) / 201,
-                    calibration.ExcitationReferenceVoltage) * SensorCalibration.StandardGravityMetersPerSecondSquared)
-                .ToArray();
+                    (rawThrust[index] - 1.25) / 201,
+                    excitationVoltage) * SensorCalibration.StandardGravityMetersPerSecondSquared;
+            }
+
+            return thrustNewtons;
         }
 
         return rawThrust

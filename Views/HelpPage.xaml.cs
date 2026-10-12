@@ -15,4 +15,10 @@ public partial class HelpPage : Page
         if (Window.GetWindow(this) is MainWindow mainWindow)
             mainWindow.NavigateToPage(new ModeSelectionPage());
     }
+
+    private void TopicButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string sectionName } && FindName(sectionName) is FrameworkElement section)
+            section.BringIntoView();
+    }
 }

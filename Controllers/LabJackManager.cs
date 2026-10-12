@@ -364,7 +364,7 @@ namespace Project_FREAK.Controllers
                         ComputeScaledSensors(currentSettings, thrustVoltage, pressureVoltage, Vexc,
                             out double calibratedLoad, out double pressure);
 
-                        batch[i] = new DataPointRecord(time, calibratedLoad, pressure, thrustVoltage, pressureVoltage);
+                        batch[i] = new DataPointRecord(time, calibratedLoad, pressure, thrustVoltage, pressureVoltage, Vexc);
                     }
 
                     var last = batch[^1];
@@ -433,7 +433,7 @@ namespace Project_FREAK.Controllers
                         ComputeScaledSensors(settings, thrustVoltage, pressureVoltage, Vexc,
                             out double calibratedLoad, out double pressure);
 
-                        batch[i] = new DataPointRecord(time, calibratedLoad, pressure, thrustVoltage, pressureVoltage);
+                        batch[i] = new DataPointRecord(time, calibratedLoad, pressure, thrustVoltage, pressureVoltage, Vexc);
                     }
 
                     var last = batch[^1];
