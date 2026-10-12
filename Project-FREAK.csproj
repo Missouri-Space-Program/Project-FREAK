@@ -9,6 +9,8 @@
 		<UseWPF>true</UseWPF>
 		<EnableWindowsTargeting>true</EnableWindowsTargeting>
 		<DefaultItemExcludes>$(DefaultItemExcludes);Tests\**\*</DefaultItemExcludes>
+		<ApplicationIcon>Assets\LOGOS\Project-FREAK.ico</ApplicationIcon>
+		<Version>2.0.0</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -20,6 +22,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
 		<PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
 		<PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.20241108" />
 		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
@@ -30,6 +33,7 @@
 
 	<ItemGroup>
 		<Reference Include="LabJack.LJM">
+			<HintPath>Assets\LIBRARIES\LabJack.LJM.dll</HintPath>
 		</Reference>
 
 		<Content Include="Assets\FONTS\nasalization-rg.otf">
@@ -43,6 +47,7 @@
 		</Content>
 		<Resource Include="Assets\LOGOS\MSP_LOGO_BG.png" />
 		<Resource Include="Assets\LOGOS\MSP_LOGO_WG.png" />
+		<Resource Include="Assets\LOGOS\Project-FREAK.ico" />
 	</ItemGroup>
 
 </Project>

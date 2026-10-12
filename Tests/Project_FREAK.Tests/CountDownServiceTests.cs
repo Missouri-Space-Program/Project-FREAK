@@ -43,5 +43,21 @@ namespace Project_FREAK.Tests.Tests
 
             Assert.True(done);
         }
+
+        [Fact]
+        public void CancelCountdown_StopsTimerAndDoesNotFireFinished()
+        {
+            var svc = new CountdownService(Dispatcher.CurrentDispatcher);
+            svc.InitializeTimer(TimeSpan.Zero);
+            bool done = false;
+            svc.CountdownFinished += () => done = true;
+
+            svc.ToggleCountdown(3);
+            Assert.True(svc.IsRunning);
+
+            svc.CancelCountdown();
+            Assert.False(svc.IsRunning);
+            Assert.False(done);
+        }
     }
 }

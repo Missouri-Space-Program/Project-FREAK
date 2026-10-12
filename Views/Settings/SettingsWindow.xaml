@@ -5,28 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Project_FREAK.Views.Settings"
         mc:Ignorable="d"
-        Title="Settings" Height="450" Width="800"
+        Title="Settings" Height="850" Width="1050" MinHeight="650" MinWidth="850"
         Background="#1E1E1E">
-    <Grid>
-        <!-- Define two columns: left for selection, right for display -->
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="125"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- Left panel: a bordered StackPanel containing a ListBox -->
-        <Border Grid.Column="0" Background="#2D2D30">
-            <StackPanel>
-                <ListBox Name="SettingsList" SelectionChanged="SettingsList_SelectionChanged"
-                         Background="#2D2D30" Foreground="White" BorderThickness="0">
-                    <ListBoxItem Content="General" Background="#2D2D30" Foreground="White"/>
-                    <ListBoxItem Content="Input" Background="#2D2D30" Foreground="White"/>
-                </ListBox>
-            </StackPanel>
-        </Border>
-
-        <!-- Right panel: a Frame to display the selected settings page -->
-        <Frame Grid.Column="1" Name="SettingsFrame" NavigationUIVisibility="Hidden"
-               Background="#1E1E1E"/>
-    </Grid>
+    <Frame x:Name="SettingsFrame" NavigationUIVisibility="Hidden" Background="#1E1E1E"/>
 </Window>

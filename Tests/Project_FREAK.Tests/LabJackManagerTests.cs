@@ -1,0 +1,101 @@
+using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using Project_FREAK.Controllers;
+using Xunit;
+
+namespace Project_FREAK.Tests;
+
+public class LabJackManagerTests
+{
+    [Fact]
+    public async Task StartStreaming_InDemoMode_FiresBatchDataUpdatedWithValidPoints()
+    {
+        var manager = LabJackManager.Instance;
+        var tcs = new TaskCompletionSource<DataPointRecord[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void Handler(DataPointRecord[] batch)
+        {
+            tcs.TrySetResult(batch);
+        }
+
+        manager.BatchDataUpdated += Handler;
+        try
+        {
+            manager.StartStreaming(1000);
+            Assert.True(manager.IsStreaming);
+
+            var batchTask = tcs.Task;
+            var completedTask = await Task.WhenAny(batchTask, Task.Delay(2000));
+            Assert.Same(batchTask, completedTask);
+
+            var batch = await batchTask;
+            Assert.NotEmpty(batch);
+            Assert.InRange(batch.Length, 10, 200);
+
+            for (int i = 0; i < batch.Length; i++)
+            {
+                Assert.True(batch[i].Time >= 0);
+                Assert.True(double.IsFinite(batch[i].Thrust));
+                Assert.True(double.IsFinite(batch[i].Pressure));
+                Assert.True(double.IsFinite(batch[i].ThrustVoltage));
+                Assert.True(double.IsFinite(batch[i].PressureVoltage));
+                double excitationVoltage = batch[i].ExcitationVoltage.GetValueOrDefault();
+                Assert.True(double.IsFinite(excitationVoltage));
+                Assert.True(excitationVoltage > 0);
+            }
+        }
+        finally
+        {
+            manager.BatchDataUpdated -= Handler;
+            manager.StopStreaming();
+            Assert.False(manager.IsStreaming);
+        }
+    }
+
+    [Fact]
+    public async Task ReconnectDevice_WhileStreaming_ResumesIdleReads()
+    {
+        var manager = LabJackManager.Instance;
+        var batchTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void BatchHandler(DataPointRecord[] _) => batchTcs.TrySetResult(true);
+        manager.BatchDataUpdated += BatchHandler;
+        manager.StartStreaming(10);
+        try
+        {
+            var batchTask = batchTcs.Task;
+            Assert.Same(batchTask, await Task.WhenAny(batchTask, Task.Delay(2000)));
+
+            var stopTimer = Stopwatch.StartNew();
+            manager.ReconnectDevice();
+            stopTimer.Stop();
+            Assert.True(stopTimer.Elapsed >= TimeSpan.FromMilliseconds(800));
+            Assert.False(manager.IsStreaming);
+
+            var idleReadTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            void Handler(double thrustVoltage, double thrust, double pressureVoltage, double pressure)
+            {
+                idleReadTcs.TrySetResult(true);
+            }
+
+            manager.DataUpdated += Handler;
+            try
+            {
+                var idleReadTask = idleReadTcs.Task;
+                var completedTask = await Task.WhenAny(idleReadTask, Task.Delay(2000));
+                Assert.Same(idleReadTask, completedTask);
+            }
+            finally
+            {
+                manager.DataUpdated -= Handler;
+            }
+        }
+        finally
+        {
+            manager.BatchDataUpdated -= BatchHandler;
+            manager.StopStreaming();
+        }
+    }
+}

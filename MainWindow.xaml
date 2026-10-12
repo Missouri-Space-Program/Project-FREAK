@@ -5,14 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Project_FREAK"
         mc:Ignorable="d"
-        Icon="/Project-Freak;component/Assets/LOGOS/MSP_LOGO_BG.png"
+        Icon="/Project-FREAK;component/Assets/LOGOS/Project-FREAK.ico"
         Title="FREAK" Height="900" Width="1600">
     <Grid>
         <DockPanel>
             <!-- Persistent Menu that stays even when you navigate to a different page -->
             <Menu x:Name="MainMenu" DockPanel.Dock="Top" Background="DarkGray">
+                <MenuItem Header="Record" Click="RecordMenuItem_Click"/>
+                <MenuItem Header="Review Data" Click="ReviewDataMenuItem_Click"/>
                 <MenuItem Header="Settings" Click="SettingsMenuItem_Click"/>
-                <MenuItem Header="Sensor Check" Click="SensorCheckMenuItem_Click"/>
+                <MenuItem Header="Help" Click="HelpMenuItem_Click"/>
             </Menu>
             <!-- Frame for Navigation -->
             <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>

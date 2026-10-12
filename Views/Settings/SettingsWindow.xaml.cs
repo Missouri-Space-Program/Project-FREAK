@@ -22,12 +22,7 @@ namespace Project_FREAK.Views.Settings
         public SettingsWindow()
         {
             InitializeComponent();
-            SettingsFrame.Navigate(new GeneralSettingsPage());     // Navigate to HomePage upon startup
-        }
-
-        private void SettingsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            
+            SettingsFrame.Navigate(new GeneralSettingsPage());
         }
     }
 }

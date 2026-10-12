@@ -1,0 +1,335 @@
+[Version]
+Signature="$Windows NT$"
+Class=LabJackUSB
+ClassGuid={486602D3-1C1F-4f02-BC84-D7421A30D1B6}
+Provider=%ProviderName%
+DriverVer = 02/12/2025,2.5.0.0
+DriverPackageType=PlugAndPlay
+CatalogFile.ntamd64=LabJacka64.cat
+
+
+; ========== Manufacturer/Models sections ===========
+
+[Manufacturer]
+%ProviderName% = LabJackCorp,NTamd64
+
+[LabJackCorp.NTamd64]
+%USB\MyDevice.DeviceDesc6% =USB_Install6, USB\VID_0CD5&PID_0006
+%USB\MyDevice.DeviceDesc3% =USB_Install3, USB\VID_0CD5&PID_0003
+%USB\MyDevice.DeviceDesc9% =USB_Install9, USB\VID_0CD5&PID_0009
+%USB\MyDevice.DeviceDesc4% =USB_Install4, USB\VID_0CD5&PID_0004
+%USB\MyDevice.DeviceDesc7% =USB_Install7, USB\VID_0CD5&PID_0007
+%USB\MyDevice.DeviceDesc8% =USB_Install8, USB\VID_0CD5&PID_0008
+%USB\MyDevice.DeviceDesc1000% =USB_Install1000, USB\VID_0CD5&PID_03E8
+%USB\MyDevice.DeviceDesc200% =USB_Install200, USB\VID_0CD5&PID_00C8
+%USB\MyDevice.DeviceDesc204% =USB_Install204, USB\VID_0CD5&PID_00CC
+
+; =================== Installation ===================
+
+[ClassInstall32]
+AddReg=SampleClass_RegistryAdd
+
+[SampleClass_RegistryAdd]
+HKR,,,,%ClassName%
+
+
+;[1]
+[USB_Install6]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install3]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install9]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install4]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install7]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install8]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install1000]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install200]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[USB_Install204]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+
+;[2]
+[USB_Install6.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install3.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install9.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install4.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install7.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install8.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install1000.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install200.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+[USB_Install204.Services]
+Include=winusb.inf
+AddService=WinUSB,0x00000002,WinUSB_ServiceInstall
+
+
+;[3]
+[WinUSB_ServiceInstall]
+DisplayName     = %WinUSB_SvcDesc%
+ServiceType     = 1
+StartType       = 3
+ErrorControl    = 1
+ServiceBinary   = %12%\WinUSB.sys
+
+
+;[4]
+[USB_Install6.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install3.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install9.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install4.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install7.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install8.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install1000.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install200.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[USB_Install204.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfServiceOrder=WINUSB
+
+[WinUSB_Install]
+KmdfLibraryVersion=1.9
+
+
+;[5]
+[USB_Install6.HW]
+AddReg=Dev_AddReg6
+
+[Dev_AddReg6]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{a29f693c-a05e-458a-b7d3-6a455e9a5400}"
+
+[USB_Install3.HW]
+AddReg=Dev_AddReg3
+
+[Dev_AddReg3]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{2F11CBBE-0C16-4eb2-8C80-23B58089A4F9}"
+
+[USB_Install9.HW]
+AddReg=Dev_AddReg9
+
+[Dev_AddReg9]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{200FDA20-4C62-4ef5-90F5-222675B0EC2A}"
+
+[USB_Install4.HW]
+AddReg=Dev_AddReg4
+
+[Dev_AddReg4]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{D2547286-8053-4023-876D-FB7C8126B347}"
+HKR,,"SurpriseRemovalOK",0x00010001,1
+HKR,,"Removable",0x00010001,1
+HKR,,"RemovalPolicy",0x00010001,3
+
+[USB_Install7.HW]
+AddReg=Dev_AddReg7
+
+[Dev_AddReg7]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{CE9B61DE-564A-4584-A3A6-597711E7FE41}"
+HKR,,"SurpriseRemovalOK",0x00010001,1
+HKR,,"Removable",0x00010001,1
+HKR,,"RemovalPolicy",0x00010001,3
+
+[USB_Install8.HW]
+AddReg=Dev_AddReg8
+
+[Dev_AddReg8]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{66bddda3-0578-4081-bfb9-adb6ed48f321}"
+HKR,,"SurpriseRemovalOK",0x00010001,1
+HKR,,"Removable",0x00010001,1
+HKR,,"RemovalPolicy",0x00010001,3
+
+[USB_Install1000.HW]
+AddReg=Dev_AddReg1000
+
+[Dev_AddReg1000]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{C2B1AB37-D950-46e6-A6DF-7D8C77FC3FFC}"
+HKR,,"SurpriseRemovalOK",0x00010001,1
+HKR,,"Removable",0x00010001,1
+HKR,,"RemovalPolicy",0x00010001,3
+
+[USB_Install200.HW]
+AddReg=Dev_AddReg200
+
+[Dev_AddReg200]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{525D2DBF-15BB-4077-A2DF-41C2603B72CB}"
+HKR,,"SurpriseRemovalOK",0x00010001,1
+HKR,,"Removable",0x00010001,1
+HKR,,"RemovalPolicy",0x00010001,3
+
+[USB_Install204.HW]
+AddReg=Dev_AddReg204
+
+[Dev_AddReg204]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{67A11C99-5B5B-4812-B5F6-A6FD8608B0D9}"
+HKR,,"SurpriseRemovalOK",0x00010001,1
+HKR,,"Removable",0x00010001,1
+HKR,,"RemovalPolicy",0x00010001,3
+
+
+;[6]
+[USB_Install3.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install6.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install9.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install4.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install7.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install8.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install1000.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install200.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+[USB_Install204.CoInstallers]
+AddReg=CoInstallers_AddReg
+CopyFiles=CoInstallers_CopyFiles
+
+
+[CoInstallers_AddReg]
+HKR,,CoInstallers32,0x00010000,"WdfCoInstaller01009.dll,WdfCoInstaller","WinUSBCoInstaller2.dll"
+
+
+[CoInstallers_CopyFiles]
+WinUSBCoInstaller2.dll
+WdfCoInstaller01009.dll
+
+[DestinationDirs]
+CoInstallers_CopyFiles=11
+
+
+; ================= Source Media Section =====================
+;[7]
+
+[SourceDisksNames.amd64]
+2 = %DISK_NAME%,,,\amd64
+
+[SourceDisksFiles.amd64]
+WinUSBCoInstaller2.dll=2
+WdfCoInstaller01009.dll=2
+
+
+; Copy Files section
+;------------------------------------------------------------------------------
+[_CopyFiles_sys]
+winusb.sys
+
+;************************************************* *****************************
+; Destination Directories
+;------------------------------------------------------------------------------
+[DestinationDirs]
+DefaultDestDir = 12 ; %SystemRoot%\system32\drivers
+_CopyFiles_sys = 12
+
+
+;Win2k+ only
+[ClassInstall32]
+AddReg=ClassInstall32.AddReg
+
+;Win2k+ only
+[ClassInstall32.AddReg]
+HKR,,,0,%ClassDesc%
+HKR,,Icon,,-20
+
+; =================== Strings ===================
+
+[Strings]
+ProviderName="LabJack Corp"
+ClassName="LabJackUSB"
+USB\MyDevice.DeviceDesc6="LabJack U6"
+USB\MyDevice.DeviceDesc3="LabJack U3"
+USB\MyDevice.DeviceDesc9="LabJack UE9"
+USB\MyDevice.DeviceDesc4="LabJack T4"
+USB\MyDevice.DeviceDesc7="LabJack T7"
+USB\MyDevice.DeviceDesc8="LabJack T8"
+USB\MyDevice.DeviceDesc1000="LabJack Wireless Bridge"
+USB\MyDevice.DeviceDesc200="LabJack Digit"
+USB\MyDevice.DeviceDesc204="Apex TULMan EC"
+WinUSB_SvcDesc="LabJack WUSB"
+DISK_NAME="Drivers"
+ClassDesc="LabJack USB Devices"

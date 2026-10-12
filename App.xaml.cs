@@ -16,12 +16,13 @@ namespace Project_FREAK
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-            _ = LabJackManager.Instance; //create LabJack device handle on startup
-            SettingsManager.LoadAppliedSettings(); // Load session settings instead of saved
+            var labJackManager = LabJackManager.Instance;
+            labJackManager.ApplyCalibration(SettingsManager.AppliedSettings);
+            SettingsManager.AppliedSettingsChanged += (_, _) => labJackManager.ApplyCalibration(SettingsManager.AppliedSettings);
         }
         protected override void OnExit(ExitEventArgs e)
         {
-            LabJackManager.Instance.CloseDevice(); //close device when done with app
+            LabJackManager.Instance.Dispose(); //close device when done with app
             base.OnExit(e);
         }
     }
